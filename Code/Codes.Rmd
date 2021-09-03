@@ -7,6 +7,19 @@ editor_options:
 
 
 # Setup 
+
+```{r Download Package}
+install.packages('dplyr')
+install.packages('readxl')
+install.packages('ggplot2')
+install.packages('scales')
+install.packages('tidyverse')
+install.packages('reshape2')
+install.packages('tidyr')
+install.packages('tidytext')
+```
+
+
 ```{r Load Package}
 library(dplyr)
 library(readxl)
@@ -20,6 +33,7 @@ library(tidytext)
 
 
 ```{r Load data}
+
 ENG_Les_diffe_rents_accents_du_franc_ais_August_25_2021 <- read_excel("Data/ENG - Les différents accents du français - August 25, 2021.xlsx")
 raw_data <- ENG_Les_diffe_rents_accents_du_franc_ais_August_25_2021
 
@@ -63,14 +77,56 @@ data <- data %>%
          Q18_leadership = QID18_9,
          Q18_educated = QID18_10,
          Q19_speaker_from = QID19
-         ) 
-str(data)
+         ) %>% 
+  mutate(age = as.numeric(age),
+         num_of_language = as.numeric(num_of_language),
+         year_of_french = as.numeric(year_of_french),
+         )
+  
+str(data) 
 ```
+
+
+
+
 ```{r convert character to factor}
 data <- data %>%
   mutate_if(is.character, as.factor)
 ```
 
+# Recording info
+
+## Accent
+
+1A: Quebec 
+2A: France 
+3A: Acadia 
+4A: French Second Language 
+5A: Africa 
+6A: Quebec 
+7A: Africa
+8A: Acadia 
+9A: France 
+10A: French Second Language 
+
+
+## Pictures 
+White
+White
+White
+White 
+White?
+Black
+Black
+Black
+Asian 
+Black
+Black
+White
+Black 
+
+
+=================================================================================
 
 Questionnaire:
 
@@ -111,12 +167,14 @@ Questionnaire:
 
 There are 44 females and 12 males
 ```{r gender}
+
 data %>% select(gender) %>% 
   group_by(gender) %>%
-  tally() 
+  tally() %>% 
+  mutate(prop = percent(n/sum(n)))
 ```
 
-One respondent did not disclose his/her age. The ages of participants range from 18 to age, with the mean lying in 22. 
+One respondent did not disclose his/her age. The ages of participants range from 18 to 39, with the mean lying in 22. 
 ```{r age, warning=FALSE}
 data$age <-  raw_data %>% select(Q2) %>% slice(2:n())
 data$age <- as.numeric(unlist(data$age))
@@ -132,11 +190,13 @@ data %>% select(age) %>%
   ggplot(aes(x = age)) + 
   geom_density() + 
   geom_vline(aes(xintercept=mean(age)),
-            color="blue", linetype="dashed", size=1)
+            color="blue", linetype="dashed", size=1) + 
+  labs(y = 'density') + 
+  annotate(x= mean(data$age, na.rm = TRUE),y=+Inf,label="Mean = 21.6",vjust=2,geom="label")
 
 ```
 
- Out of 56 participants, almost half of them comes from Canada (27). For the rest, a majority of participants are from Aisa, which is followed by Ameria, Europe, and Africa. 
+ Out of 56 participants, almost half of them comes from Canada (27). For the rest, a majority of participants are from Asia, which is followed by America, Europe, and Africa. 
 ```{r country/area of birth, warning = FALSE}
 data %>% select(country_of_birth) %>%
   mutate(country_general = ifelse(country_of_birth == 'Canada', 'Canada', 'Outside of Canada'))  %>% 
@@ -156,23 +216,23 @@ as.data.frame(data %>%
   tally()) %>%  
   ggplot(aes(x = continent, y = n, fill = continent)) + 
   geom_col() + 
+  labs(y = 'count') + 
   geom_text(aes(label = n), vjust = -0.5)
 
 ```
 
-18 participants grew up in BC. 
+Among 27 participants who was born in Canada, 18 of them grew up in BC. 
 ```{r province/territory}
 data %>% 
+  filter(country_of_birth == 'Canada') %>%
   select(grow_up_province) %>% 
-  mutate(BC = ifelse(grow_up_province == "BC", TRUE, FALSE)) %>%
-  group_by(BC) %>%
-  tally()
+  mutate(Grow_up_Province = ifelse(grow_up_province == "BC", 'Live in BC', 'Live outside BC')) %>%
+  group_by(Grow_up_Province) %>%
+  tally() 
 
 ```
 
-
-
-Out of 56 participants, the fields pf study of 13 people were/are French. As a side note, two people have linguistics backgrounds. 
+Out of 56 participants, the fields of study of 13 people were/are French. One side note: 2 people have linguistics backgrounds. 
 ```{r Field of Study}
 data %>% select(field_of_study) %>%
   mutate(french_major = ifelse(str_detect(field_of_study, "French"), TRUE, FALSE)) %>%
@@ -180,7 +240,7 @@ data %>% select(field_of_study) %>%
   tally()
 ```
 
-Around half of participants speaks three languages, which is followed by two languages, four languages, and over five languages. To be specific, all participants are at least English and French speakers
+Around half of participants speak three languages, which is followed by two languages, four languages, and over five languages. To be specific, all participants are at least English and French speakers
 ```{r Language They Speak}
 language_df <- as.data.frame(data %>% 
   group_by(num_of_language) %>%
@@ -247,14 +307,6 @@ rbind(language_count, data %>%
 
 ```{r Years of Studying French}
 
-year_of_studying_french_df <- data %>% 
-  select(year_of_french) %>% 
-  mutate(year_of_french = as.numeric(year_of_french)) %>%
-  mutate(year_group = case_when(year_of_french <= 5 ~ '0 - 5', 
-                                year_of_french > 5 & year_of_french <= 10 ~ '5 - 10',
-                                year_of_french > 10 & year_of_french <= 15 ~ '10 - 15',
-                                year_of_french > 15 ~ '> 15')) %>% 
-  group_by(year_group)
 
 
 # pie chart 
@@ -271,52 +323,42 @@ year_of_studying_french_df %>%
   tally() %>% 
   ggplot(aes(x = year_group, y =n, fill=year_group)) +
   geom_col()+
-  geom_text(aes(label = n), vjust = -0.5) 
+  geom_text(aes(label = n), vjust = -0.5) + 
+  labs(x = 'Years of Studying French', y = 'count')
 ```
 10. What French accent would you prefer to learn?
 - Quebec French
 - France French
 - other variety of French (specify): 
 
+
+The number/proportion of preference for European French is over three times of that of Quebec! 
 ```{r Preferred French to Learn}
 data %>% 
   select(type_of_french) %>% 
   mutate(type_of_french=replace(type_of_french, type_of_french== 'Français de France', 'French from France')) %>%
   group_by(type_of_french) %>%
-  tally() %>%
-  mutate(type_of_french=replace(type_of_french, type_of_french== 'Other variety of French (specify)', 'Belgium, Franco-Ontario or Cajun')) %>%
+  tally() %>% 
+  slice_head(n = 3) %>%
+  add_row(type_of_french = "Belgium, Franco-Ontario or Cajun", n = 2) %>%
+  #mutate(type_of_french = replace(type_of_french, type_of_french == "Other variety of French (specify)", "Belgium, Franco-Ontario or Cajun")) %>%
   mutate(per =`n`/sum(`n`),
          label = paste0(n, ' (', scales::percent(per), ')')) %>% 
-  ggplot(aes(x="", y = per, fill = fct_inorder(type_of_french)))+
-  geom_bar(stat="identity", width = 1) +
-  coord_polar("y", start=0, direction = - 1)+
-  theme_void()+
-  geom_text(aes(x=0.9, y = cumsum(per) - per/2, label= label))
-
-
-
-data %>% 
-  select(type_of_french) %>% 
-  mutate(type_of_french=replace(type_of_french, type_of_french== 'Français de France', 'French from France')) %>%
-  group_by(type_of_french) %>%
-  tally() %>%
-  mutate(type_of_french=replace(type_of_french, type_of_french== 'Other variety of French (specify)', 'Belgium, Franco-Ontario or Cajun')) %>%
-  mutate(per =`n`/sum(`n`),
-         label = paste0(n, ' (', scales::percent(per), ')')) %>% 
-  ggplot(aes(x="", y = per, fill = fct_inorder(type_of_french)))+
+  ggplot(aes(x="", y = per, fill = type_of_french))+
   geom_bar(stat="identity", width = 1) +
   coord_polar("y", start=0, direction = - 1)+
   theme_void()+
   geom_text(aes(x=0.9, y = cumsum(per) - per/2, label= label)) + 
   scale_fill_discrete(name = "Preferred French to Learn") 
-
 ```
-9. Have you lived or spent time in Quebec, France, or in another French-speaking country? 
 
+
+9. Have you lived or spent time in Quebec, France, or in another French-speaking country? 
 
 ```{r Lived/Spent time in French-speaking area}
 
 # 42 people have lived in French-speaking places. 
+
 data %>% 
   select(french_speaking_place) %>% 
   drop_na()
@@ -333,11 +375,11 @@ data %>% select(french_speaking_place) %>%
   group_by(french_speaking_place_eng) %>%
   tally()
  
-
  # 
 ```
 
 ```{r}
+# these two "non" people never lived in French-speaking area
 data %>% 
   select(french_speaking_place, french_speaking_place_other) %>%
   filter(french_speaking_place_other == 'Non')
@@ -345,11 +387,6 @@ data %>%
 
 unique(data$french_speaking_place_other)
 ```
-```{r}
-data %<% 
-  mutate(french_speaking_place = replace(french_speaking_place, french_speaking_place_other == 'Non', Non))
-```
-
 
 10 continued: if so, for how many months?
 
@@ -421,8 +458,12 @@ rbind(teacher_origin_df, teacher_original_other_df %>% slice_head( n = 3)) %>%
 
 
 ```{r}
-data$
+chisq.test(data$type_of_french, data$teacher_origin)
+
+fisher.test(data$type_of_french, data$teacher_origin)
 ```
+
+
 
 
 
