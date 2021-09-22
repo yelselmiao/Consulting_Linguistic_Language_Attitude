@@ -1,5 +1,6 @@
 ---
 title: "Consulting-Linguistic Project"
+author: Shuyi Tan
 output: html_notebook
 editor_options: 
   chunk_output_type: inline
@@ -65,7 +66,7 @@ data <- data %>%
          )
   
 #  check the data type of each column
-str(data) 
+#str(data) 
 ```
 
 
@@ -589,16 +590,22 @@ beau_fr_pw <- beau_fren_long %>%
     p.adjust.method = "bonferroni"
     ) %>%  mutate(y.position = c(13, 14.5, 16))
 
-ggboxplot(beau_fren_long, x = "accent", y = "value", fill = "accent") + 
+p_beautiful <- ggboxplot(beau_fren_long, x = "accent", y = "value", fill = "accent") + 
   rremove('legend') + 
+  rremove('xlab') + 
   stat_pvalue_manual(beau_fr_pw, vjust = - 0.3, bracket.nudge.y = 0.5, label = "p = {p.adj}", size = 3) + 
   labs(
     subtitle = get_test_label(res_beau_fr, detailed = TRUE),
-    caption = get_pwc_label(beau_fr_pw)
+    caption = get_pwc_label(beau_fr_pw),
+    title = 'Beautiful',
+    y = 'Score',
   ) + 
   theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=9, vjust= 2, face="italic", color="black")
-        )
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
   
 ```
 
@@ -721,7 +728,8 @@ p_nice <- ggboxplot(nice_df, x = 'accent', y = "value", fill = "accent") +
   labs(
     subtitle = get_test_label(res_nice, detailed = TRUE),
     caption = get_pwc_label(nice_pw),
-    title = 'Nice'
+    title = 'Nice',
+    y = 'Score',
   ) + 
   theme(plot.caption = element_text(size=10),
         plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
@@ -754,7 +762,8 @@ p_social <- ggboxplot(social_df, x = 'accent', y = "value", fill = "accent") +
   labs(
     subtitle = get_test_label(res_social, detailed = TRUE),
     caption = get_pwc_label(social_pw),
-    title = 'Social'
+    title = 'Social',
+    y = 'Score',
   ) + 
   theme(plot.caption = element_text(size=10),
         plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
@@ -767,7 +776,7 @@ p_social <- ggboxplot(social_df, x = 'accent', y = "value", fill = "accent") +
 
 ```{r Solidarity dimension - viz, fig.height= 7.9, fig.width= 8}
 # plot
-cowplot::plot_grid(p_dynamic, p_nice, p_social)
+cowplot::plot_grid(p_beautiful,p_dynamic, p_nice, p_social)
 
 # table
 res_tbl_ds <- matrix(NA, nrow = 3, ncol = 5)
