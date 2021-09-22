@@ -1,0 +1,1213 @@
+---
+title: "Codes for new data "
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+# Setup 
+
+```{r Load Package, message=FALSE}
+library(readxl)
+library(ggplot2)
+library(scales)
+library(tidyverse)
+library(reshape2)
+library(tidyr)
+library(tidytext)
+library(rstatix)
+library(ggpubr)
+library(lme4)
+library(sjPlot)
+```
+
+
+```{r Load data}
+#Les_diffe_rents_accents_du_franc_ais_September_15_2021 <- read_excel("Data/Les différents accents du français - September 15 2021.xlsx")
+raw_data <- Les_diffe_rents_accents_du_franc_ais_September_15_2021
+
+#remove the first line
+data <- raw_data[-1, ]
+
+names(data)
+```
+
+
+
+
+```{r rename some columns}
+data <- data %>%
+  select(-c(StartDate, Finished, Q44, Q43...143, QID18_1, QID18_2, QID18_3, QID18_4,
+            QID18_5, QID18_6, QID18_7, QID18_8, QID18_9, QID18_10, QID19)) %>%
+  rename(gender = Q1,
+         gender_other = Q1_4_TEXT, 
+         age = Q2,
+         country_of_birth = Q3,
+         grow_up_province = Q41,
+         grow_up_city = Q4,
+         field_of_study = Q5,
+         num_of_language = Q6,
+         spoken_language = Q42, 
+         #spoken_language_other = Q42_11_TEXT,
+         mother_tongue = Q7,
+         mother_tongue_other = Q7_11_TEXT,
+         year_of_french = Q8,
+         french_speaking_place = Q9,
+         french_speaking_place_other = Q9_6_TEXT,
+         month_live_in_fr_env = Q43...17,
+         type_of_french = Q10,
+         type_of_french_other = Q10_3_TEXT,
+         teacher_origin = Q11, 
+         teacher_origin_other = Q11_3_TEXT
+         ) %>% 
+  mutate(age = as.numeric(age),
+         num_of_language = as.numeric(num_of_language),
+         year_of_french = as.numeric(year_of_french),
+         )
+  
+#  check the data type of each column
+#str(data) 
+```
+
+
+```{r convert character to factor}
+#data <- data %>%
+#  mutate_if(is.character, as.factor)
+```
+
+
+# EDA (Descriptive data and visualization) 
+
+```{r gender}
+data %>% select(gender) %>% 
+  group_by(gender) %>%
+  tally() %>% 
+  mutate(prop = percent(n/sum(n)))
+```
+
+```{r age, warning=FALSE}
+data$age <-  raw_data %>% select(Q2) %>% slice(2:n())
+data$age <- as.numeric(unlist(data$age))
+
+# summary data
+data %>% select(age) %>%
+  drop_na() %>%
+  summarize(min = min(age),
+            max = max(age),
+            mean = mean(age))
+
+# visualization
+data %>% select(age) %>%
+  drop_na() %>% 
+  ggplot(aes(x = age)) + 
+  geom_density() + 
+  # add a vertical line for the average value 
+  geom_vline(aes(xintercept=mean(age)),
+            color="blue", linetype="dashed", size=1) + 
+  labs(y = 'density') + 
+  annotate(x= mean(data$age, na.rm = TRUE),y=+Inf,label="Mean = 21.6",vjust= 2, hjust = - 0.1, geom="label")
+
+```
+
+
+```{r country/area of birth, warning = FALSE}
+# check how many participants come from Canada
+data %>% select(country_of_birth) %>%
+  mutate(country_general = ifelse(country_of_birth == 'Canada', 'Canada', 'Outside of Canada'))  %>% 
+  group_by(country_general) %>%
+  tally()
+
+
+# visualize the proportions of participants who aren't from Canada by Continent 
+as.data.frame(data %>% 
+  select(country_of_birth) %>%
+  filter(country_of_birth != 'Canada') %>%
+  mutate(continent = case_when(country_of_birth %in% c('Pakistan', 'Philippines', 'China', 'Hong Kong (S.A.R.)', 'India', 'Iran', 'Japan', 'Kazakhstan', 'South Korea', 'Taiwan') ~ 'Asia',
+                              country_of_birth %in% c('Brazil', 'Colombia', 'United States of America') ~ 'America',
+                              country_of_birth %in% c('Croatia', 'Czech Republic', 'Russian Federation', 'United Kingdom of Great Britain and Northern Ireland') ~ 'Europe',
+                              country_of_birth %in% c('Mauritius', 'Tunisia') ~ 'Africa')) %>%
+  group_by(continent) %>% 
+  tally()) %>%  
+  ggplot(aes(x = continent, y = n, fill = continent)) + 
+  geom_col() + 
+  labs(y = 'count') + 
+  geom_text(aes(label = n), vjust = -0.5)
+
+```
+
+
+
+```{r Country of Brith}
+as.data.frame(data %>% 
+  select(country_of_birth) %>%
+  filter(country_of_birth != 'Canada') %>%
+  mutate(continent = case_when(country_of_birth %in% c('Pakistan', 'Philippines', 'China', 'Hong Kong (S.A.R.)', 'India', 'Iran', 'Japan', 'Kazakhstan', 'South Korea', 'Taiwan', 'Turkey', 'Israel', 'Malaysia', 'Viet Nam', 'United Arab Emirates', 'Brunei Darussalam', 'Iraq') ~ 'Asia',
+                              country_of_birth %in% c('Brazil', 'Colombia', 'United States of America', 'Dominica', 'USA') ~ 'America',
+                              country_of_birth %in% c('Croatia', 'Czech Republic', 'Russian Federation', 'United Kingdom of Great Britain and Northern Ireland', 'Ukraine', 'Turkey', 'Romania', 'Monaco') ~ 'Europe',
+                              country_of_birth %in% c('Mauritius', 'Tunisia') ~ 'Africa')) %>%
+      group_by(continent) %>% 
+  tally()) %>%  
+  slice_head(n = 3) %>%
+  ggplot(aes(x = continent, y = n, fill = continent)) + 
+  geom_col() + 
+  labs(y = 'count') + 
+  geom_text(aes(label = n), vjust = -0.5) 
+
+```
+
+```{r province/territory}
+data %>% 
+  filter(country_of_birth == 'Canada') %>%
+  select(grow_up_province) %>% 
+  mutate(Grow_up_Province = ifelse(grow_up_province == "BC", 'Live in BC', 'Live outside BC')) %>%
+  group_by(Grow_up_Province) %>%
+  tally() 
+
+```
+```{r Field of Study}
+data %>% select(field_of_study) %>%
+  mutate(french_major = ifelse(str_detect(field_of_study, "French"), TRUE, FALSE)) %>%
+  group_by(french_major) %>% 
+  tally()
+```
+
+
+```{r Language They Speak}
+language_df <- as.data.frame(data %>% 
+  group_by(num_of_language) %>%
+  tally() %>% drop_na())
+  
+language_df$num_of_language <- factor(language_df$num_of_language, levels = c("1", "2", "3", "4"))
+
+language_df %>% 
+  ggplot(aes(x= num_of_language, y= n, fill = num_of_language)) + 
+  geom_col() + 
+  geom_text(aes(label = n), vjust = - 0.5) + 
+  xlab("How many languages do you speak?") 
+
+# count of French speaker
+nrow(data %>% 
+  select(spoken_language) %>%
+  filter(str_detect(spoken_language, 'French')))
+
+# count of English speaker 
+nrow(data %>% 
+  select(spoken_language) %>%
+  filter(str_detect(spoken_language, 'English')))
+
+```
+
+```{r Mother Tongue}
+language_df_II <- data %>% 
+  select(mother_tongue) %>%
+  mutate(English = ifelse(str_detect(mother_tongue, "English") | str_detect(mother_tongue, "Anglais"), TRUE, FALSE),
+         Cantonese = ifelse(str_detect(mother_tongue,"Cantonese"), TRUE, FALSE), 
+         Mandarin = ifelse(str_detect(mother_tongue,"Mandarin"), TRUE, FALSE),      
+         Korean = ifelse(str_detect(mother_tongue,"Korean"), TRUE, FALSE),
+         Tagalog = ifelse(str_detect(mother_tongue,"Tagalog"), TRUE, FALSE),
+         Anglais = ifelse(str_detect(mother_tongue,"Anglais"), TRUE, FALSE))   
+
+language_count = matrix(NA, nrow = 6, ncol = 2)
+language_count[,1] <- names(language_df_II)[2:7]
+
+for (i in 1:6){
+  language_count[i,2] = as.numeric(table(language_df_II[,i+1]))[2]
+}
+
+language_count <- as.data.frame(language_count)
+colnames(language_count) = c('mother_tongue', 'n')
+
+# Visualization
+rbind(language_count, data %>%
+  select(mother_tongue_other) %>%
+  drop_na() %>%
+  group_by(mother_tongue_other) %>%
+  tally() %>%
+  rename(mother_tongue = mother_tongue_other)) %>%
+  mutate(n = as.numeric(n)) %>%
+  arrange(desc(n)) %>% 
+  ggplot(aes(x = reorder(mother_tongue, n), y = n)) +
+  geom_col() + 
+  geom_text(aes(label = n), hjust = -0.5) + 
+  coord_flip() + 
+  labs(x = 'Mother Tongue', y = 'Count') + 
+  theme_minimal()
+```
+
+```{r Years of Studying French, fig.width= 10, fig.height=4}
+# pie chart 
+cowplot::plot_grid(year_of_studying_french_df %>% 
+  tally() %>% 
+  ggplot(aes(x="", y = n, fill=year_group))+
+  geom_bar(width = 1, stat = "identity")+
+  coord_polar("y") + 
+  scale_fill_discrete(name = "Years of Studying French"),  
+year_of_studying_french_df %>% 
+  tally() %>% 
+  ggplot(aes(x = year_group, y =n, fill=year_group)) +
+  geom_col()+
+  geom_text(aes(label = n), vjust = -0.5) + 
+  labs(x = 'Years of Studying French', y = 'count'),
+ncol = 2)
+
+```
+
+```{r Preferred French to Learn, fig.height=3, fig.width=5}
+
+preference_df <- data %>% 
+  select(type_of_french) %>% 
+  group_by(type_of_french) %>%
+  tally() %>% 
+  mutate(per =`n`/sum(`n`),
+         label = paste0(n, ' (', scales::percent(per), ')'))
+
+
+plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
+  layout(title = 'Preferred Type of French to Learn',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+```{r Lived/Spent time in French-speaking area}
+live_in_french_env_df <- as.data.frame(t(as.data.frame(data %>% 
+  select(french_speaking_place)  %>% 
+  group_by(french_speaking_place) %>% 
+  tally() %>% 
+  mutate(live_in_France = ifelse(str_detect(french_speaking_place, 'France'), n, NA),
+         live_in_quebec = ifelse(str_detect(french_speaking_place, 'Quebec'), n, NA),
+         other = ifelse(french_speaking_place == 'Elsewhere:', n, NA),
+         unkown = ifelse(is.na(french_speaking_place) == TRUE, n, NA)
+         )%>% 
+  summarize(France = sum(live_in_France, na.rm = TRUE),
+               Quebec = sum(live_in_quebec, na.rm = TRUE),
+               other = sum(other, na.rm = TRUE),
+               unkown = sum(unkown, na.rm = TRUE)))))
+
+live_in_french_env_df <- tibble::rownames_to_column(live_in_french_env_df, "Area")
+
+live_in_french_env_df %>% 
+  rename(count = V1) %>%
+  mutate(prop = scales::percent(count/sum(count)))
+``` 
+
+```{r months of living in French-speaking area}
+data$month_live_in_fr_env <- as.factor(data$month_live_in_fr_env)
+levels(data$month_live_in_fr_env) <- c("1 - 3", "4 - 6", "< 1", "> 12")
+
+data$month_live_in_fr_env <- factor(data$month_live_in_fr_env, levels = c("< 1", "1 - 3", "4 - 6", "> 12"))
+
+data %>% 
+  mutate(month_live_in_fr_env = as.factor(month_live_in_fr_env)) %>%
+  select(month_live_in_fr_env) %>% 
+  drop_na() %>% 
+  group_by(month_live_in_fr_env) %>% 
+  tally() %>% 
+  ggplot(aes(x = month_live_in_fr_env, y = n)) + 
+  geom_col() + 
+  geom_text(aes(label = n), vjust = -0.5) + 
+  labs(x = 'Months of Living in French-speaking Places', y = 'Month') + 
+  theme_minimal() 
+
+```
+
+```{r Teacher}
+data %>%
+  select(teacher_origin, teacher_origin_other) %>%
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "Both French and Quebec", 'French and Quebec')) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "French and Quebec", 'French and Quebec')) %>%
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "Quebec and French", 'French and Quebec')) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Elsewhere (specify)", 'Elsewhere')) %>% 
+  group_by(teacher_origin) %>%
+  tally() %>% 
+  drop_na() %>% 
+  ggplot(aes(x = reorder(teacher_origin, n), y = n)) + 
+  geom_col() + 
+  coord_flip() + 
+  geom_text(aes(label = n), hjust = -0.5) + 
+  labs(x = 'Original of French Teacher', y = 'Count')
+```
+
+# Recording Evaluation
+
+1A: Quebec. White.
+2A: French. Black.
+3A. Acadian. Black.
+4A. English. White.
+5A. African. Black.
+6A. Quebec. Black.
+7A. African. White.
+8A. Acadian. White.
+9A. French. White.
+10A. English. Black.
+
+
+```{r Recording Evaluation Columns}
+recording_temp <- data %>% 
+  select(c(20:129)) %>% 
+  # I will leave conjecture question aside for now 
+  select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`))
+
+
+change <- function(df, oldpref, newpref) {
+  df %>%
+       rename_at(vars(starts_with(oldpref)), funs(sub(oldpref, newpref, .)))
+ }
+
+recording_temp <- as.data.frame(recording_temp)
+
+recording_temp <- change(recording_temp, '1A', 'que_w')
+recording_temp <- change(recording_temp, '2A', 'fr_b')
+recording_temp <- change(recording_temp, '3A', 'aca_b')
+recording_temp <- change(recording_temp, '4A', 'eng_w')
+recording_temp <- change(recording_temp, '5A', 'afr_b')
+recording_temp <- change(recording_temp, '6A', 'que_b')
+recording_temp <- change(recording_temp, '7A', 'afr_w')
+recording_temp <- change(recording_temp, '8A', 'aca_w')
+recording_temp <- change(recording_temp, '9A', 'fr_w')
+recording_temp <- change(recording_temp, '10A', 'eng_b')
+
+recording_temp <- as.data.frame(sapply(recording_temp, as.numeric))
+```
+
+```{r Beautiful french}
+beau_fr <- recording_temp %>% 
+  select(que_w_1, que_b_1, fr_b_1, fr_w_1, aca_b_1, aca_w_1, eng_w_1, eng_b_1, afr_w_1, afr_b_1) %>%
+  mutate(Quebec = rowSums(.[1:2]),
+         European = rowSums(.[3:4]),
+         Acadian = rowSums(.[5:6]),
+         English = rowSums(.[7:8]),
+         African = rowSums(.[9:10]))  %>%
+  select(c(11:15)) %>%
+  mutate(id = 1:nrow(recording_temp))
+
+# convert to long format
+
+beau_fr_long <- beau_fr %>%
+  gather(key = "Accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, Accent)
+
+# summary stat: the stats of Quebec French and European French is pretty similar
+beau_fr_long %>% 
+  group_by(Accent) %>%
+  get_summary_stats(value, type = "mean_sd")
+
+# repeated measures ANOVA
+res_beau_fr<- get_anova_table(anova_test(data = beau_fr_long, dv = value, wid = id, within = Accent))
+
+# pairwise paired t-tests
+
+beau_fr_pw <- beau_fr_long %>%
+  pairwise_t_test(
+    value ~ Accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% mutate(y.position = c(seq(12,16.5, by = 0.5)))
+  #add_xy_position(x = "Accent") #  
+
+p_beautiful <- ggboxplot(beau_fr_long, x = "Accent", y = "value", fill = "Accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(beau_fr_pw, vjust = - 0.3, bracket.nudge.y = 0.6, size = 2,hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_beau_fr, detailed = TRUE),
+    caption = get_pwc_label(beau_fr_pw),
+    title = 'Beautiful',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+```
+
+
+```{r Solidarity dimension}
+sd_french <- recording_temp %>% 
+  select(contains(c('_5', '_6', '_7'))) %>%
+  mutate(que_dynamic = que_w_5 + que_b_5,
+         fr_dynamic = fr_b_5 + fr_w_5,
+         aca_dynamic = aca_b_5 + aca_w_5,
+         eng_dynamic = eng_w_5 + eng_b_5,
+         afr_dynamic = afr_b_5 + afr_w_5,
+         que_nice = que_w_6 + que_b_6,
+         fr_nice = fr_b_6 + fr_w_6,
+         aca_nice = aca_b_6 + aca_w_6,
+         eng_nice = eng_w_6 + eng_b_6,
+         afr_nice = afr_b_6 + afr_w_6,
+         que_social = que_w_7 + que_b_7,
+         fr_social = fr_b_7 + fr_w_7,
+         aca_social = aca_b_7 + aca_w_7,
+         eng_social = eng_w_7 + eng_b_7,
+         afr_social = afr_b_7 + afr_w_7)
+
+
+dynamic_df <- sd_french %>% 
+  select(que_dynamic, fr_dynamic, aca_dynamic, eng_dynamic, afr_dynamic) %>%
+  rename(Quebec = que_dynamic,
+         European = fr_dynamic,
+         Acadian = aca_dynamic,
+         English = eng_dynamic,
+         African = afr_dynamic
+         ) %>% 
+  mutate(id = 1: nrow(sd_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+nice_df <- sd_french %>% 
+  select(que_nice, fr_nice, aca_nice,eng_nice, afr_nice) %>%
+  rename(Quebec = que_nice,
+         European = fr_nice,
+         Acadian = aca_nice,
+         English = eng_nice,
+         African = afr_nice) %>% 
+  mutate(id = 1: nrow(sd_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+social_df <- sd_french %>% 
+  select(que_social, fr_social, aca_social, eng_social, afr_social) %>%
+  rename(Quebec = que_social,
+         European = fr_social,
+         Acadian = aca_social,
+         English = eng_social,
+         African = afr_social) %>% 
+  mutate(id = 1: nrow(sd_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+
+
+--------------------------------------------------------------------------------------------------------------
+# Dynamic
+dynamic_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_dynamic <- get_anova_table(anova_test(data = dynamic_df, dv = value, wid = id, within = accent))
+  
+
+dynamic_pw <- dynamic_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1))) 
+
+p_dynamic <- ggboxplot(dynamic_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(dynamic_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_dynamic, detailed = TRUE),
+    caption = get_pwc_label(dynamic_pw),
+    y = 'Score',
+    title = 'Dynamic'
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+
+--------------------------------------------------------------------------------------------------------------
+
+# Nice
+
+nice_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_nice <- get_anova_table(anova_test(data = nice_df, dv = value, wid = id, within = accent))
+  
+nice_pw <- nice_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_nice <- ggboxplot(nice_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(nice_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_nice, detailed = TRUE),
+    caption = get_pwc_label(nice_pw),
+    title = 'Nice',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+--------------------------------------------------------------------------------------------------------------
+
+
+social_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_social <- get_anova_table(anova_test(data = social_df, dv = value, wid = id, within = accent))
+  
+
+social_pw <- social_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_social <- ggboxplot(social_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(social_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) +
+  labs(
+    subtitle = get_test_label(res_social, detailed = TRUE),
+    caption = get_pwc_label(social_pw),
+    title = 'Social',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+  
+```
+
+
+```{r Solidarity dimension - result, fig.height= 7.9, fig.width= 8}
+# plot
+cowplot::plot_grid(p_beautiful,p_dynamic, p_nice, p_social)
+
+# table
+res_tbl_ds <- matrix(NA, nrow = 3, ncol = 7)
+
+res_tbl_ds[1, 1:5]  <- pull(dynamic_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_ds[2, 1:5]  <-pull(nice_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_ds[3, 1:5]  <- pull(social_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+
+res_tbl_ds[, 6] <- c(res_dynamic$F, res_nice$F, res_social$F)
+res_tbl_ds[, 7] <- c(res_dynamic$p, res_nice$p, res_social$p)
+
+res_tbl_ds <- as.data.frame(res_tbl_ds)
+colnames(res_tbl_ds) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
+rownames(res_tbl_ds) <- c('Dynamic', 'Nice', 'Social')
+res_tbl_ds
+```
+
+1) I think this is beautiful French.
+
+* Understandability
+
+2) Is it rather easy or difficult to understand the speaker?
+3) Would the person who did the recording be a good French teacher at UBC?
+4) The speaker’s accent is weak, strong, or absent?
+
+* Solidarity dimension
+5) This person is dynamic.
+6) This person is nice.
+7) This person is social.
+
+* Status traits
+8) This person is professional.
+9) This person is leader.
+10) This person is educated.
+
+
+```{r Solidarity traits}
+st_french <- recording_temp %>% 
+  select(contains(c('_8', '_9', '_10'))) %>%
+  mutate(que_prof = que_w_8 + que_b_8,
+         fr_prof = fr_b_8 + fr_w_8,
+         aca_prof = aca_b_8 + aca_w_8,
+         eng_prof = eng_w_8 + eng_b_8,
+         afr_prof = afr_b_8 + afr_w_8,
+         que_lead = que_w_9 + que_b_9,
+         fr_lead = fr_b_9 + fr_w_9,
+         aca_lead = aca_b_9 + aca_w_9,
+         eng_lead = eng_w_9 + eng_b_9,
+         afr_lead = afr_b_9 + afr_w_9,
+         que_edu = que_w_10 + que_b_10,
+         fr_edu = fr_b_10 + fr_w_10,
+         aca_edu = aca_b_10 + aca_w_10,
+         eng_edu = eng_w_10 + eng_b_10,
+         afr_edu = afr_b_10 + afr_w_10)
+
+
+prof_df <- st_french %>% 
+  select(que_prof, fr_prof, aca_prof, eng_prof, afr_prof) %>%
+  rename(Quebec = que_prof,
+         European = fr_prof,
+         Acadian = aca_prof,
+         English = eng_prof,
+         African = afr_prof
+         ) %>% 
+  mutate(id = 1: nrow(st_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+lead_df <- st_french %>% 
+  select(que_lead, fr_lead, aca_lead,eng_lead, afr_lead) %>%
+  rename(Quebec = que_lead,
+         European = fr_lead,
+         Acadian = aca_lead,
+         English = eng_lead,
+         African = afr_lead) %>% 
+  mutate(id = 1: nrow(st_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+edu_df <- st_french %>% 
+  select(que_edu, fr_edu, aca_edu, eng_edu, afr_edu) %>%
+  rename(Quebec = que_edu,
+         European = fr_edu,
+         Acadian = aca_edu,
+         English = eng_edu,
+         African = afr_edu) %>% 
+  mutate(id = 1: nrow(st_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+
+
+--------------------------------------------------------------------------------------------------------------
+# Professional
+prof_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_prof <- get_anova_table(anova_test(data = prof_df, dv = value, wid = id, within = accent))
+  
+
+prof_pw <- prof_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1))) 
+
+p_prof <- ggboxplot(prof_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(prof_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_prof, detailed = TRUE),
+    caption = get_pwc_label(prof_pw),
+    y = 'Score',
+    title = 'Professional'
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+
+--------------------------------------------------------------------------------------------------------------
+
+# Leadership
+
+lead_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_lead <- get_anova_table(anova_test(data = lead_df, dv = value, wid = id, within = accent))
+  
+lead_pw <- lead_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_lead <- ggboxplot(lead_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(lead_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_lead, detailed = TRUE),
+    caption = get_pwc_label(lead_pw),
+    title = 'Leadership',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+--------------------------------------------------------------------------------------------------------------
+
+# Educated 
+edu_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_edu <- get_anova_table(anova_test(data = edu_df, dv = value, wid = id, within = accent))
+  
+
+edu_pw <- edu_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_edu <- ggboxplot(edu_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(edu_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) +
+  labs(
+    subtitle = get_test_label(res_edu, detailed = TRUE),
+    caption = get_pwc_label(edu_pw),
+    title = 'Educated',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+  
+```
+
+
+```{r Solidarity traits - result, fig.height= 7.9, fig.width= 8}
+# plot
+cowplot::plot_grid(p_prof,p_lead, p_edu)
+
+# table
+res_tbl_dt <- matrix(NA, nrow = 3, ncol = 7)
+
+res_tbl_dt[1, 1:5]  <- pull(prof_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_dt[2, 1:5]  <-pull(lead_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_dt[3, 1:5]  <- pull(edu_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+
+res_tbl_dt[, 6] <- c(res_prof$F, res_lead$F, res_edu$F)
+res_tbl_dt[, 7] <- c(res_prof$p, res_lead$p, res_edu$p)
+
+res_tbl_dt <- as.data.frame(res_tbl_dt)
+colnames(res_tbl_dt) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
+rownames(res_tbl_dt) <- c('Dynamic', 'Nice', 'Social')
+res_tbl_dt
+```
+2) This speaker is easy to understand. 
+3) Would the person who did the recording be a good French teacher at UBC?
+4) The speaker has a strong accent.
+
+```{r Understandability}
+# reverse the scale of question (4): The speaker has a strong accent.
+accent_cols = recording_temp %>% 
+  select(contains('_4')) %>%
+  names
+
+recording_temp[,accent_cols] = lapply(accent_cols,  function(x) 7 - recording_temp[, x])
+
+und_french <- recording_temp %>% 
+  select(contains(c('_2', '_3', '_4'))) %>%
+  mutate(que_und = que_w_2 + que_b_2,
+         fr_und = fr_b_2 + fr_w_2,
+         aca_und = aca_b_2 + aca_w_2,
+         eng_und = eng_w_2 + eng_b_2,
+         afr_und = afr_b_2 + afr_w_2,
+         que_teach = que_w_3 + que_b_3,
+         fr_teach = fr_b_3 + fr_w_3,
+         aca_teach = aca_b_3 + aca_w_3,
+         eng_teach = eng_w_3 + eng_b_3,
+         afr_teach = afr_b_3 + afr_w_3,
+         que_acc = que_w_4 + que_b_4,
+         fr_acc = fr_b_4 + fr_w_4,
+         aca_acc = aca_b_4 + aca_w_4,
+         eng_acc = eng_w_4 + eng_b_4,
+         afr_acc = afr_b_4 + afr_w_4)
+
+
+und_df <- und_french %>% 
+  select(que_und, fr_und, aca_und, eng_und, afr_und) %>%
+  rename(Quebec = que_und,
+         European = fr_und,
+         Acadian = aca_und,
+         English = eng_und,
+         African = afr_und
+         ) %>% 
+  mutate(id = 1: nrow(und_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+teach_df <- und_french %>% 
+  select(que_teach, fr_teach, aca_teach,eng_teach, afr_teach) %>%
+  rename(Quebec = que_teach,
+         European = fr_teach,
+         Acadian = aca_teach,
+         English = eng_teach,
+         African = afr_teach) %>% 
+  mutate(id = 1: nrow(und_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+acc_df <- und_french %>% 
+  select(que_acc, fr_acc, aca_acc, eng_acc, afr_acc) %>%
+  rename(Quebec = que_acc,
+         European = fr_acc,
+         Acadian = aca_acc,
+         English = eng_acc,
+         African = afr_acc) %>% 
+  mutate(id = 1: nrow(und_french)) %>% 
+    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  convert_as_factor(id, accent)
+
+--------------------------------------------------------------------------------------------------------------
+# Easy to understand
+und_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_und <- get_anova_table(anova_test(data = und_df, dv = value, wid = id, within = accent))
+  
+
+und_pw <- und_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1))) 
+
+p_und <- ggboxplot(und_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(und_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_und, detailed = TRUE),
+    caption = get_pwc_label(und_pw),
+    y = 'Score',
+    title = 'Easy to Understand'
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+
+--------------------------------------------------------------------------------------------------------------
+
+# Good teacher
+
+teach_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_teach <- get_anova_table(anova_test(data = teach_df, dv = value, wid = id, within = accent))
+  
+teach_pw <- teach_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_teach <- ggboxplot(teach_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(teach_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) + 
+  labs(
+    subtitle = get_test_label(res_teach, detailed = TRUE),
+    caption = get_pwc_label(teach_pw),
+    title = 'Godd French Teacher',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+--------------------------------------------------------------------------------------------------------------
+
+# Easy to understand  
+acc_df %>% 
+  group_by(accent) %>%
+  get_summary_stats(value, type = "mean_sd")  
+
+res_acc <- get_anova_table(anova_test(data = acc_df, dv = value, wid = id, within = accent))
+  
+
+acc_pw <- acc_df %>%
+  pairwise_t_test(
+    value ~ accent, paired = TRUE,
+    p.adjust.method = "bonferroni"
+    ) %>% 
+  mutate(y.position = c(seq(12,21, by = 1)))
+
+p_acc <- ggboxplot(acc_df, x = 'accent', y = "value", fill = "accent") + 
+  rremove('legend') + 
+  rremove('xlab') + 
+  stat_pvalue_manual(acc_pw, vjust = 0.5, bracket.nudge.y = 0.5, size = 3, hide.ns = TRUE) +
+  labs(
+    subtitle = get_test_label(res_acc, detailed = TRUE),
+    caption = get_pwc_label(acc_pw),
+    title = 'Weak Accent',
+    y = 'Score',
+  ) + 
+  theme(plot.caption = element_text(size=10),
+        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        plot.title = element_text(size=13, face = 'bold'))
+
+```
+
+```{r Understandability - result, fig.height= 7.9, fig.width= 8}
+# plot
+cowplot::plot_grid(p_und,p_teach, p_acc)
+
+# table
+res_tbl_und <- matrix(NA, nrow = 3, ncol = 7)
+
+res_tbl_und[1, 1:5]  <- pull(prof_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_und[2, 1:5]  <-pull(lead_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+res_tbl_und[3, 1:5]  <- pull(edu_df %>% 
+  group_by(accent) %>% 
+  summarize(mean = round(mean(value), 1)), mean)
+
+
+res_tbl_und[, 6] <- c(res_prof$F, res_lead$F, res_edu$F)
+res_tbl_und[, 7] <- c(res_prof$p, res_lead$p, res_edu$p)
+
+res_tbl_und <- as.data.frame(res_tbl_und)
+colnames(res_tbl_und) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
+rownames(res_tbl_und) <- c('Dynamic', 'Nice', 'Social')
+res_tbl_und
+```
+
+# Check the effect of race
+
+
+```{r data cleaning}
+# re-clean the data: combine the score 
+  
+recording_df <- data %>% 
+  select(c(20:129)) %>% 
+  select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`)) %>%
+  mutate(across(where(is.character), as.numeric)) %>%
+  mutate(id = 1: nrow(data),
+         id = as.factor(id)) %>%
+  relocate(id, .before = `1A_1`) %>% 
+  mutate(block_1 = rowSums(.[2:11]),
+         block_2 = rowSums(.[12:21]),
+         block_3 = rowSums(.[22:31]),
+         block_4 = rowSums(.[32:41]),
+         block_5 = rowSums(.[42:51]),
+         block_6 = rowSums(.[52:61]),
+         block_7 = rowSums(.[62:71]),
+         block_8 = rowSums(.[72:81]),
+         block_9 = rowSums(.[82:91]),
+         block_10 = rowSums(.[92:101])) %>%
+  select(id, block_1, block_2, block_3, block_4, block_5, block_6, block_7, block_8, block_9, block_10)
+
+# convert to long format
+recording_df_long <- recording_df %>% 
+  pivot_longer(-c(id), values_to = "score", names_to = "block") %>% 
+  mutate(race = case_when(block %in% c('block_1', 'block_4', 'block_7', 'block_8', 'block_9')~'white',
+                          block %in% c('block_2', 'block_3', 'block_5', 'block_6', 'block_10')~'black'),
+         accent = case_when(block %in% c('block_1', 'block_6')~'Quebec',
+                            block %in% c('block_2', 'block_9')~'European',
+                            block %in% c('block_3', 'block_8')~'Acadian',
+                            block %in% c('block_4', 'block_10')~'English',
+                            block %in% c('block_5', 'block_7')~'African')) 
+  
+
+# potential confounders                
+conf <- data %>% mutate(id = 1: nrow(data),
+                id = as.factor(id)) %>%
+  select(id,gender, age, num_of_language, type_of_french, teacher_origin) %>%
+  mutate(across(where(is.character), as.factor))
+  
+recording_df_long <- recording_df_long %>% 
+  right_join(conf, on = 'id')
+
+```
+
+```{r violin plot, fig.width=6, fig.height=3}
+recording_df_long %>%
+  ggplot(aes(x=accent, y=score, fill=race)) +
+  geom_violin(position=position_dodge(1), alpha=0.5) + 
+  geom_boxplot(width=.1, outlier.colour=NA, position=position_dodge(1), fill = 'white', aes(group = interaction(race, accent))) +
+  scale_fill_viridis(discrete=T, name="") +
+  theme_ipsum() + 
+  labs(x = 'Accent', y = 'Score') + 
+  theme(axis.title.x = element_text(size = 10,face = 'bold'),
+        axis.title.y = element_text(size = 10,face = 'bold'),
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8))
+```
+
+## t test and  Wilcoxon test
+```{r two-sample t test}
+
+b_df <- recording_df_long %>%
+  filter(race == "black")
+w_df <- recording_df_long %>%
+  filter(race == "white")
+
+t.test(b_df$score, w_df$score) 
+wilcox.test(b_df$score, w_df$score)
+```
+
+## LME 
+
+```{r fig.width=6, fig.height=10}
+# fit individual linear regression models to check within-suject difference
+fit_lm <- lme4::lmList(score ~ race + accent|id, data = as.data.frame(recording_df_long))
+
+plot(confint(fit_lm))
+# It's easy that the confidence interval for individual intecepst and individual slopes do not overlap suggesting that random effect may be need for both the interval and slopes in the mixed effect model. 
+```
+
+```{r}
+recording_df_long <- recording_df_long %>%
+  mutate(race = as.factor(race),
+         accent = as.factor(accent))
+
+# make white speakers who speaker European French as baseline
+recording_df_long <- within(recording_df_long, race <-  relevel(race, ref ='white'))
+recording_df_long <- within(recording_df_long, accent <-  relevel(accent, ref ='European'))
+```
+
+
+```{r Fit LMEs}
+# adding random effect to intercept 
+lme_1 <-  lmer(score ~ race + accent + (1|id), data = as.data.frame(recording_df_long))
+summary(lme_1)
+
+# random intercept and slope (both race and accent)
+
+# this model triggers singular fit
+lme_2 <-  lmer(score ~ race + accent +  (1 + race + accent|id), data = as.data.frame(recording_df_long))
+summary(lme_2)
+
+
+# random effect to intercept and accent
+lme_3 <-  lmer(score ~ race + accent +  (1 + accent|id), data = as.data.frame(recording_df_long))
+summary(lme_3)
+```
+
+```{r Compare LMEs}
+anova(lme_1, lme_2, lme_3)
+# the ranoem intercept and random accent model lme_3 obviously fits the best because of its smallest AIC and BIC. In additional, the p-value indicates the significance. 
+```
+
+
+```{r Model estimate visualization}
+sjPlot::plot_model(lme_3, 
+                   axis.labels=c("Quebec Accent", "English Accent", "African Accent", "Acadian Accent", "Black Speakers"),
+                   show.values=TRUE, show.p=TRUE,
+                   title="Effect of Race and Accent on Lanaguage Attitude")
+
+sjPlot::tab_model(lme_3, 
+                  show.re.var= TRUE, 
+                  pred.labels =c("(Intercept)", "Black Speakers", "Acadian Accent", "African Accent", "English Accent", "Quebec Accent"),
+                  dv.labels= "Effect of Race and Accent on Lanaguage Attitude")
+```
+## GEE model
+```{r}
+test_df <- recording_df_long 
+test_df <-test_df[order(test_df$id),]
+
+
+gee_fit <- gee(score ~ race + accent,
+               data = test_df, 
+               id = id, 
+               family = gaussian,
+               corstr = "independence")
+```
+
+```{r}
+gee(score ~ race + accent,
+               data = test_df, 
+               id = subject, 
+               family = gaussian,
+               corstr = "exchangeable")
+```
+
+
+
+```{r}
+URL <- "http://static.lib.virginia.edu/statlab/materials/data/depression.csv"
+dat <- read.csv(URL, stringsAsFactors = TRUE)
+dat$id <- factor(dat$id)
+dat$drug <- relevel(dat$drug, ref = "standard")
+dat
+
+gee(depression ~ diagnose + drug*time,
+               data = dat, 
+               id = id, 
+               family = binomial,
+               corstr = "independence")
+```
+
+
+
+
+
+```{r}
+summary(lm(score ~ race + accent + age + gender + num_of_language + type_of_french + teacher_origin, data = recording_df_long))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
