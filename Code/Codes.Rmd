@@ -72,7 +72,7 @@ data <- data %>%
 
 
 ```{r convert character to factor}
-data <- data %>%
+data <- data %>% 
   mutate_if(is.character, as.factor)
 ```
 
@@ -278,7 +278,7 @@ nrow(data %>%
 language_df_II <- data %>% 
   select(mother_tongue) %>%
   mutate(English = ifelse(str_detect(mother_tongue, "English") | str_detect(mother_tongue, "Anglais"), TRUE, FALSE),
-         Cantonese = ifelse(str_detect(mother_tongue,"Cantonese"), TRUE, FALSE),chabu 
+         Cantonese = ifelse(str_detect(mother_tongue,"Cantonese"), TRUE, FALSE), 
          Hindi = ifelse(str_detect(mother_tongue,"Hindi"), TRUE, FALSE),
          Mandarin = ifelse(str_detect(mother_tongue,"Mandarin"), TRUE, FALSE),      
          Korean = ifelse(str_detect(mother_tongue,"Korean"), TRUE, FALSE),
@@ -315,7 +315,6 @@ rbind(language_count, data %>%
 ```
 
 ```{r Years of Studying French}
-
 # pie chart 
 year_of_studying_french_df %>% 
   tally() %>% 
