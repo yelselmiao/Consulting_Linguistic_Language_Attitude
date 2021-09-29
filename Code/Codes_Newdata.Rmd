@@ -34,7 +34,6 @@ names(data)
 
 
 
-
 ```{r rename some columns}
 data <- data %>%
   select(-c(StartDate, Finished, Q44, Q43...143, QID18_1, QID18_2, QID18_3, QID18_4,
@@ -104,36 +103,13 @@ data %>% select(age) %>%
   # add a vertical line for the average value 
   geom_vline(aes(xintercept=mean(age)),
             color="blue", linetype="dashed", size=1) + 
-  labs(y = 'density') + 
-  annotate(x= mean(data$age, na.rm = TRUE),y=+Inf,label="Mean = 21.6",vjust= 2, hjust = - 0.1, geom="label")
+  labs(y = 'Density', x = 'Age') + 
+  annotate(x= mean(data$age, na.rm = TRUE),y=+Inf,label="Mean = 20.4",vjust= 2, hjust = - 0.1, geom="label")
 
 ```
 
 
-```{r country/area of birth, warning = FALSE}
-# check how many participants come from Canada
-data %>% select(country_of_birth) %>%
-  mutate(country_general = ifelse(country_of_birth == 'Canada', 'Canada', 'Outside of Canada'))  %>% 
-  group_by(country_general) %>%
-  tally()
 
-
-# visualize the proportions of participants who aren't from Canada by Continent 
-as.data.frame(data %>% 
-  select(country_of_birth) %>%
-  filter(country_of_birth != 'Canada') %>%
-  mutate(continent = case_when(country_of_birth %in% c('Pakistan', 'Philippines', 'China', 'Hong Kong (S.A.R.)', 'India', 'Iran', 'Japan', 'Kazakhstan', 'South Korea', 'Taiwan') ~ 'Asia',
-                              country_of_birth %in% c('Brazil', 'Colombia', 'United States of America') ~ 'America',
-                              country_of_birth %in% c('Croatia', 'Czech Republic', 'Russian Federation', 'United Kingdom of Great Britain and Northern Ireland') ~ 'Europe',
-                              country_of_birth %in% c('Mauritius', 'Tunisia') ~ 'Africa')) %>%
-  group_by(continent) %>% 
-  tally()) %>%  
-  ggplot(aes(x = continent, y = n, fill = continent)) + 
-  geom_col() + 
-  labs(y = 'count') + 
-  geom_text(aes(label = n), vjust = -0.5)
-
-```
 
 
 
@@ -146,11 +122,12 @@ as.data.frame(data %>%
                               country_of_birth %in% c('Croatia', 'Czech Republic', 'Russian Federation', 'United Kingdom of Great Britain and Northern Ireland', 'Ukraine', 'Turkey', 'Romania', 'Monaco') ~ 'Europe',
                               country_of_birth %in% c('Mauritius', 'Tunisia') ~ 'Africa')) %>%
       group_by(continent) %>% 
-  tally()) %>%  
+  tally() %>% 
+  rename(Continent = continent)) %>%  
   slice_head(n = 3) %>%
-  ggplot(aes(x = continent, y = n, fill = continent)) + 
+  ggplot(aes(x = Continent, y = n, fill = Continent)) + 
   geom_col() + 
-  labs(y = 'count') + 
+  labs(y = 'Count', x = 'Continent') + 
   geom_text(aes(label = n), vjust = -0.5) 
 
 ```
@@ -180,10 +157,12 @@ language_df <- as.data.frame(data %>%
 language_df$num_of_language <- factor(language_df$num_of_language, levels = c("1", "2", "3", "4"))
 
 language_df %>% 
-  ggplot(aes(x= num_of_language, y= n, fill = num_of_language)) + 
+  rename(`Number of Spoken Language(s)` = num_of_language) %>% 
+  ggplot(aes(x= `Number of Spoken Language(s)`, y= n, fill = `Number of Spoken Language(s)`)) + 
   geom_col() + 
   geom_text(aes(label = n), vjust = - 0.5) + 
-  xlab("How many languages do you speak?") 
+  xlab("Number of Spoken Language(s)") + 
+  ylab('Count')
 
 # count of French speaker
 nrow(data %>% 
@@ -230,25 +209,49 @@ rbind(language_count, data %>%
   geom_col() + 
   geom_text(aes(label = n), hjust = -0.5) + 
   coord_flip() + 
-  labs(x = 'Mother Tongue', y = 'Count') + 
+  labs(x = 'First Language', y = 'Count') + 
   theme_minimal()
 ```
 
-```{r Years of Studying French, fig.width= 10, fig.height=4}
-# pie chart 
-cowplot::plot_grid(year_of_studying_french_df %>% 
+```{r Years of Studying French}
+year_of_studying_french_df <- year_of_studying_french_df %>% 
   tally() %>% 
-  ggplot(aes(x="", y = n, fill=year_group))+
-  geom_bar(width = 1, stat = "identity")+
-  coord_polar("y") + 
-  scale_fill_discrete(name = "Years of Studying French"),  
+  mutate(per =`n`/sum(`n`),
+        label = paste0(n, ' (', scales::percent(per), ')'))
+
+year_of_studying_french_df$year_group <- factor(year_of_studying_french_df$year_group, levels = c("0 - 5", "5 - 10", "10 - 15", "> 15"))
+
+
+plot_ly(year_of_studying_french_df, labels = ~year_group, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
+  layout(title = 'Year(s) of Studying French',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
 year_of_studying_french_df %>% 
-  tally() %>% 
   ggplot(aes(x = year_group, y =n, fill=year_group)) +
   geom_col()+
   geom_text(aes(label = n), vjust = -0.5) + 
-  labs(x = 'Years of Studying French', y = 'count'),
-ncol = 2)
+  labs(x = 'Year(s) of Studying French', y = 'count') + 
+  theme(legend.position = "none")
+  #scale_fill_discrete(name = "Year(s) of Studying French") + 
+  
+
+
+# pie chart 
+#cowplot::plot_grid(year_of_studying_french_df %>% 
+#  tally() %>% 
+#  ggplot(aes(x="", y = n, fill=year_group))+
+#  geom_bar(width = 1, stat = "identity")+
+#  coord_polar("y") + 
+#  theme(legend.position = "none"),  
+#year_of_studying_french_df %>% 
+#  tally() %>% 
+#  ggplot(aes(x = year_group, y =n, fill=year_group)) +
+#  geom_col()+
+#  geom_text(aes(label = n), vjust = -0.5) + 
+#  labs(x = 'Years of Studying French', y = 'count') + 
+#  scale_fill_discrete(name = "Years of Studying French"),
+#ncol = 2)
 
 ```
 
@@ -302,6 +305,7 @@ data %>%
   drop_na() %>% 
   group_by(month_live_in_fr_env) %>% 
   tally() %>% 
+  mutate(per = scales::percent(n/sum(n))) %>%
   ggplot(aes(x = month_live_in_fr_env, y = n)) + 
   geom_col() + 
   geom_text(aes(label = n), vjust = -0.5) + 
@@ -319,6 +323,7 @@ data %>%
   mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Elsewhere (specify)", 'Elsewhere')) %>% 
   group_by(teacher_origin) %>%
   tally() %>% 
+  mutate(per = scales::percent(n/sum(n))) %>%
   drop_na() %>% 
   ggplot(aes(x = reorder(teacher_origin, n), y = n)) + 
   geom_col() + 
@@ -341,7 +346,7 @@ data %>%
 10A. English. Black.
 
 
-```{r Recording Evaluation Columns}
+```{r Recording Evaluation Columns, warning = FALSE, message= FALSE}
 recording_temp <- data %>% 
   select(c(20:129)) %>% 
   # I will leave conjecture question aside for now 
@@ -406,19 +411,20 @@ beau_fr_pw <- beau_fr_long %>%
 p_beautiful <- ggboxplot(beau_fr_long, x = "Accent", y = "value", fill = "Accent") + 
   rremove('legend') + 
   rremove('xlab') + 
-  stat_pvalue_manual(beau_fr_pw, vjust = - 0.3, bracket.nudge.y = 0.6, size = 2,hide.ns = TRUE) + 
+  stat_pvalue_manual(beau_fr_pw, vjust = 0.1, bracket.nudge.y = 0.6, size = 2,hide.ns = TRUE) + 
   labs(
     subtitle = get_test_label(res_beau_fr, detailed = TRUE),
     caption = get_pwc_label(beau_fr_pw),
-    title = 'Beautiful',
+    title = 'Beautiful French',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
+
 ```
 
 
@@ -504,12 +510,12 @@ p_dynamic <- ggboxplot(dynamic_df, x = 'accent', y = "value", fill = "accent") +
     y = 'Score',
     title = 'Dynamic'
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 
 --------------------------------------------------------------------------------------------------------------
@@ -539,12 +545,12 @@ p_nice <- ggboxplot(nice_df, x = 'accent', y = "value", fill = "accent") +
     title = 'Nice',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 --------------------------------------------------------------------------------------------------------------
 
@@ -573,12 +579,12 @@ p_social <- ggboxplot(social_df, x = 'accent', y = "value", fill = "accent") +
     title = 'Social',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
   
 ```
 
@@ -586,6 +592,7 @@ p_social <- ggboxplot(social_df, x = 'accent', y = "value", fill = "accent") +
 ```{r Solidarity dimension - result, fig.height= 7.9, fig.width= 8}
 # plot
 cowplot::plot_grid(p_beautiful,p_dynamic, p_nice, p_social)
+
 
 # table
 res_tbl_ds <- matrix(NA, nrow = 3, ncol = 7)
@@ -607,7 +614,7 @@ res_tbl_ds[, 6] <- c(res_dynamic$F, res_nice$F, res_social$F)
 res_tbl_ds[, 7] <- c(res_dynamic$p, res_nice$p, res_social$p)
 
 res_tbl_ds <- as.data.frame(res_tbl_ds)
-colnames(res_tbl_ds) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
+colnames(res_tbl_ds) <- c('mean_Acadian', 'mean_African', 'mean_English','mean_European', 'mean_Quebec', 'F', 'p-value')
 rownames(res_tbl_ds) <- c('Dynamic', 'Nice', 'Social')
 res_tbl_ds
 ```
@@ -631,7 +638,7 @@ res_tbl_ds
 10) This person is educated.
 
 
-```{r Solidarity traits}
+```{r Status traits}
 st_french <- recording_temp %>% 
   select(contains(c('_8', '_9', '_10'))) %>%
   mutate(que_prof = que_w_8 + que_b_8,
@@ -713,12 +720,12 @@ p_prof <- ggboxplot(prof_df, x = 'accent', y = "value", fill = "accent") +
     y = 'Score',
     title = 'Professional'
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 
 --------------------------------------------------------------------------------------------------------------
@@ -748,12 +755,12 @@ p_lead <- ggboxplot(lead_df, x = 'accent', y = "value", fill = "accent") +
     title = 'Leadership',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 --------------------------------------------------------------------------------------------------------------
 
@@ -782,17 +789,17 @@ p_edu <- ggboxplot(edu_df, x = 'accent', y = "value", fill = "accent") +
     title = 'Educated',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
   
 ```
 
 
-```{r Solidarity traits - result, fig.height= 7.9, fig.width= 8}
+```{r Status traits - result, fig.height= 7.9, fig.width= 8}
 # plot
 cowplot::plot_grid(p_prof,p_lead, p_edu)
 
@@ -816,8 +823,8 @@ res_tbl_dt[, 6] <- c(res_prof$F, res_lead$F, res_edu$F)
 res_tbl_dt[, 7] <- c(res_prof$p, res_lead$p, res_edu$p)
 
 res_tbl_dt <- as.data.frame(res_tbl_dt)
-colnames(res_tbl_dt) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
-rownames(res_tbl_dt) <- c('Dynamic', 'Nice', 'Social')
+colnames(res_tbl_dt) <- c('mean_Acadian', 'mean_African', 'mean_English','mean_European', 'mean_Quebec', 'F', 'p-value')
+rownames(res_tbl_dt) <- c('Professional', 'Leadership', 'Social')
 res_tbl_dt
 ```
 2) This speaker is easy to understand. 
@@ -911,12 +918,12 @@ p_und <- ggboxplot(und_df, x = 'accent', y = "value", fill = "accent") +
     y = 'Score',
     title = 'Easy to Understand'
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 
 --------------------------------------------------------------------------------------------------------------
@@ -943,19 +950,19 @@ p_teach <- ggboxplot(teach_df, x = 'accent', y = "value", fill = "accent") +
   labs(
     subtitle = get_test_label(res_teach, detailed = TRUE),
     caption = get_pwc_label(teach_pw),
-    title = 'Godd French Teacher',
+    title = 'Good French Teacher',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 --------------------------------------------------------------------------------------------------------------
 
-# Easy to understand  
+# Weak Accent
 acc_df %>% 
   group_by(accent) %>%
   get_summary_stats(value, type = "mean_sd")  
@@ -980,12 +987,12 @@ p_acc <- ggboxplot(acc_df, x = 'accent', y = "value", fill = "accent") +
     title = 'Weak Accent',
     y = 'Score',
   ) + 
-  theme(plot.caption = element_text(size=10),
-        plot.subtitle=element_text(size=10, vjust= 1, face="italic", color="black"),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 8),
-        plot.title = element_text(size=13, face = 'bold'))
+  theme(plot.caption = element_text(size=12),
+        plot.subtitle=element_text(size=13, vjust= 1, face="italic", color="black"),
+        axis.text.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.y = element_text(size = 10),
+        plot.title = element_text(size=15, face = 'bold'))
 
 ```
 
@@ -996,40 +1003,50 @@ cowplot::plot_grid(p_und,p_teach, p_acc)
 # table
 res_tbl_und <- matrix(NA, nrow = 3, ncol = 7)
 
-res_tbl_und[1, 1:5]  <- pull(prof_df %>% 
+res_tbl_und[1, 1:5]  <- pull(und_df %>% 
   group_by(accent) %>% 
   summarize(mean = round(mean(value), 1)), mean)
 
-res_tbl_und[2, 1:5]  <-pull(lead_df %>% 
+res_tbl_und[2, 1:5]  <-pull(teach_df %>% 
   group_by(accent) %>% 
   summarize(mean = round(mean(value), 1)), mean)
 
-res_tbl_und[3, 1:5]  <- pull(edu_df %>% 
+res_tbl_und[3, 1:5]  <- pull(acc_df %>% 
   group_by(accent) %>% 
   summarize(mean = round(mean(value), 1)), mean)
 
 
-res_tbl_und[, 6] <- c(res_prof$F, res_lead$F, res_edu$F)
-res_tbl_und[, 7] <- c(res_prof$p, res_lead$p, res_edu$p)
+res_tbl_und[, 6] <- c(res_und$F, res_teach$F, res_acc$F)
+res_tbl_und[, 7] <- c(res_und$p, res_teach$p, res_acc$p)
 
 res_tbl_und <- as.data.frame(res_tbl_und)
-colnames(res_tbl_und) <- c('mean_Quebec', 'mean_European', 'mean_Acadian','mean_English', 'mean_African', 'F', 'p-value')
-rownames(res_tbl_und) <- c('Dynamic', 'Nice', 'Social')
+colnames(res_tbl_und) <- c('mean_Acadian', 'mean_African', 'mean_English','mean_European', 'mean_Quebec', 'F', 'p-value')
+rownames(res_tbl_und) <- c('Easy to Understand', 'Good French Teacher', 'Weak Accent')
 res_tbl_und
 ```
 
 # Check the effect of race
 
 
+
 ```{r data cleaning}
 # re-clean the data: combine the score 
-  
+
 recording_df <- data %>% 
   select(c(20:129)) %>% 
   select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`)) %>%
   mutate(across(where(is.character), as.numeric)) %>%
   mutate(id = 1: nrow(data),
-         id = as.factor(id)) %>%
+         id = as.factor(id)) 
+
+accent_cols_II <- recording_df %>% 
+  select(contains('_4')) %>%
+  names
+
+recording_df[,accent_cols_II] = lapply(accent_cols_II,  function(x) 7 - recording_df[, x])
+
+
+recording_df <- recording_df %>%
   relocate(id, .before = `1A_1`) %>% 
   mutate(block_1 = rowSums(.[2:11]),
          block_2 = rowSums(.[12:21]),
@@ -1066,35 +1083,89 @@ recording_df_long <- recording_df_long %>%
 
 ```
 
-```{r violin plot, fig.width=6, fig.height=3}
-recording_df_long %>%
-  ggplot(aes(x=accent, y=score, fill=race)) +
-  geom_violin(position=position_dodge(1), alpha=0.5) + 
-  geom_boxplot(width=.1, outlier.colour=NA, position=position_dodge(1), fill = 'white', aes(group = interaction(race, accent))) +
-  scale_fill_viridis(discrete=T, name="") +
-  theme_ipsum() + 
-  labs(x = 'Accent', y = 'Score') + 
-  theme(axis.title.x = element_text(size = 10,face = 'bold'),
-        axis.title.y = element_text(size = 10,face = 'bold'),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 8))
-```
+
 
 ## t test and  Wilcoxon test
 ```{r two-sample t test}
-
 b_df <- recording_df_long %>%
   filter(race == "black")
 w_df <- recording_df_long %>%
   filter(race == "white")
 
-t.test(b_df$score, w_df$score) 
-wilcox.test(b_df$score, w_df$score)
+t.test(b_df$score, w_df$score, alternative= "greater") 
+wilcox.test(b_df$score, w_df$score, alternative= "greater")
+
 ```
+## Two-way repeated measures ANOVA
+
+
+```{r violin plot, fig.width=6, fig.height=3}
+recording_df_long %>%
+  ggplot(aes(x=accent, y=score, fill=race)) +
+  geom_violin(position=position_dodge(1), alpha=0.5) + 
+  geom_boxplot(width=.1, outlier.colour=NA, position=position_dodge(1), fill = 'white', aes(group = interaction(race, accent))) +
+  viridis::scale_fill_viridis(discrete=T, name="") +
+  hrbrthemes::theme_ipsum() + 
+  labs(x = 'Accent', y = 'Score') + 
+  theme(axis.title.x = element_text(size = 15,face = 'bold'),
+        axis.title.y = element_text(size = 15,face = 'bold'),
+        axis.text.y = element_text(size = 15),
+        axis.text.x = element_text(size = 15))
+```
+
+
+```{r Two-way repeated measures ANOVA}
+res.aov.twoway <- anova_test(
+  data = recording_df_long, dv = score, wid = id,
+  within = c(accent, race)
+  )
+get_anova_table(res.aov.twoway)  
+```
+```{r Two-way repeated measures ANOVA - result}
+
+pwc <- recording_df_long %>%
+  group_by(accent) %>%
+  pairwise_t_test(
+    score ~ race, paired = TRUE,
+    p.adjust.method = "bonferroni",
+    alternative = 'greater'
+    )
+
+
+pwc <- pwc %>% add_xy_position(x = "accent")
+
+
+ggboxplot(
+  recording_df_long, x = "accent", y = "score",
+  color = "race", palette = "jco"
+  ) + 
+  stat_pvalue_manual(pwc, tip.length = 0, hide.ns = TRUE) +
+  labs(
+    subtitle = get_test_label(res.aov, detailed = TRUE),
+    caption = get_pwc_label(pwc),
+    y = 'Score',
+    x = 'Accent'
+  ) + 
+  theme(axis.title.x = element_text(size = 15,face = 'bold'),
+        axis.title.y = element_text(size = 15,face = 'bold'),
+        axis.text.y = element_text(size = 15),
+        axis.text.x = element_text(size = 15))
+
+pwc
+```
+
+```{r Examine the group of European and English}
+recording_df_long %>% 
+  filter(accent == 'European' |
+         accent == 'English') %>% 
+  group_by(accent, race) %>%
+  summarise(mu = mean(score))
+```
+
 
 ## LME 
 
-```{r fig.width=6, fig.height=10}
+```{r check random effect, fig.width=6, fig.height=10}
 # fit individual linear regression models to check within-suject difference
 fit_lm <- lme4::lmList(score ~ race + accent|id, data = as.data.frame(recording_df_long))
 
@@ -1102,7 +1173,7 @@ plot(confint(fit_lm))
 # It's easy that the confidence interval for individual intecepst and individual slopes do not overlap suggesting that random effect may be need for both the interval and slopes in the mixed effect model. 
 ```
 
-```{r}
+```{r change baseline}
 recording_df_long <- recording_df_long %>%
   mutate(race = as.factor(race),
          accent = as.factor(accent))
@@ -1134,6 +1205,12 @@ summary(lme_3)
 anova(lme_1, lme_2, lme_3)
 # the ranoem intercept and random accent model lme_3 obviously fits the best because of its smallest AIC and BIC. In additional, the p-value indicates the significance. 
 ```
+```{r Check assumptions}
+plot(lme_3, xlab = 'Fitted Values', ylab = 'Standardized Residuals')
+
+# qqplot
+qqnorm(resid(lme_3))
+```
 
 
 ```{r Model estimate visualization}
@@ -1147,48 +1224,29 @@ sjPlot::tab_model(lme_3,
                   pred.labels =c("(Intercept)", "Black Speakers", "Acadian Accent", "African Accent", "English Accent", "Quebec Accent"),
                   dv.labels= "Effect of Race and Accent on Lanaguage Attitude")
 ```
-## GEE model
-```{r}
-test_df <- recording_df_long 
-test_df <-test_df[order(test_df$id),]
+## GEE
+
+```{r GEE model}
+library(geepack)
+
+geeglm(score ~ race + accent,
+       id = id,
+       data = test_df,
+       family = gaussian,
+       corstr = "independence")
 
 
-gee_fit <- gee(score ~ race + accent,
-               data = test_df, 
-               id = id, 
-               family = gaussian,
-               corstr = "independence")
+gee_ex <- geeglm(score ~ race + accent,
+       id = id,
+       data = test_df,
+       family = gaussian,
+       corstr = "exchangeable")
+
+summary(gee_ex)
 ```
+## Linear Regression Model
 
-```{r}
-gee(score ~ race + accent,
-               data = test_df, 
-               id = subject, 
-               family = gaussian,
-               corstr = "exchangeable")
-```
-
-
-
-```{r}
-URL <- "http://static.lib.virginia.edu/statlab/materials/data/depression.csv"
-dat <- read.csv(URL, stringsAsFactors = TRUE)
-dat$id <- factor(dat$id)
-dat$drug <- relevel(dat$drug, ref = "standard")
-dat
-
-gee(depression ~ diagnose + drug*time,
-               data = dat, 
-               id = id, 
-               family = binomial,
-               corstr = "independence")
-```
-
-
-
-
-
-```{r}
+```{r Fit a unverse linear regression model}
 summary(lm(score ~ race + accent + age + gender + num_of_language + type_of_french + teacher_origin, data = recording_df_long))
 ```
 
