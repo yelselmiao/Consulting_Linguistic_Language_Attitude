@@ -29,12 +29,12 @@ raw_data <- Les_diffe_rents_accents_du_franc_ais_September_15_2021
 #remove the first line
 data <- raw_data[-1, ]
 
+# check column names
 names(data)
 ```
 
 
-
-```{r rename some columns}
+```{r rename some columns, warning = FALSE, message = FALSE}
 data <- data %>%
   select(-c(StartDate, Finished, Q44, Q43...143, QID18_1, QID18_2, QID18_3, QID18_4,
             QID18_5, QID18_6, QID18_7, QID18_8, QID18_9, QID18_10, QID19)) %>%
@@ -66,12 +66,6 @@ data <- data %>%
   
 #  check the data type of each column
 #str(data) 
-```
-
-
-```{r convert character to factor}
-#data <- data %>%
-#  mutate_if(is.character, as.factor)
 ```
 
 
@@ -111,9 +105,9 @@ data %>% select(age) %>%
 
 
 
-
-
 ```{r Country of Brith}
+# For particiants who wre born in Canada, we group them by continents
+
 as.data.frame(data %>% 
   select(country_of_birth) %>%
   filter(country_of_birth != 'Canada') %>%
@@ -133,6 +127,7 @@ as.data.frame(data %>%
 ```
 
 ```{r province/territory}
+# For participants who were born in Canada
 data %>% 
   filter(country_of_birth == 'Canada') %>%
   select(grow_up_province) %>% 
@@ -142,6 +137,9 @@ data %>%
 
 ```
 ```{r Field of Study}
+# To check how many people major in French
+# TRUE: major in French
+# FALSE: not major in French
 data %>% select(field_of_study) %>%
   mutate(french_major = ifelse(str_detect(field_of_study, "French"), TRUE, FALSE)) %>%
   group_by(french_major) %>% 
@@ -149,7 +147,8 @@ data %>% select(field_of_study) %>%
 ```
 
 
-```{r Language They Speak}
+```{r Number of Languages They Speak}
+# drop missing values
 language_df <- as.data.frame(data %>% 
   group_by(num_of_language) %>%
   tally() %>% drop_na())
