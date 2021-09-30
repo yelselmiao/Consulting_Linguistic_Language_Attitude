@@ -106,7 +106,7 @@ data %>% select(age) %>%
 
 
 ```{r Country of Brith}
-# For particiants who wre born in Canada, we group them by continents
+# For participants who were born in Canada, we group them by continents
 
 as.data.frame(data %>% 
   select(country_of_birth) %>%
@@ -150,11 +150,15 @@ data %>% select(field_of_study) %>%
 ```{r Number of Languages They Speak}
 # drop missing values
 language_df <- as.data.frame(data %>% 
-  group_by(num_of_language) %>%
-  tally() %>% drop_na())
+                                group_by(num_of_language) %>%
+                                tally() %>% 
+                                drop_na())
+
+# Reorder the levels
   
 language_df$num_of_language <- factor(language_df$num_of_language, levels = c("1", "2", "3", "4"))
 
+# visualization
 language_df %>% 
   rename(`Number of Spoken Language(s)` = num_of_language) %>% 
   ggplot(aes(x= `Number of Spoken Language(s)`, y= n, fill = `Number of Spoken Language(s)`)) + 
@@ -163,12 +167,12 @@ language_df %>%
   xlab("Number of Spoken Language(s)") + 
   ylab('Count')
 
-# count of French speaker
+# count of French speaker: 85
 nrow(data %>% 
   select(spoken_language) %>%
   filter(str_detect(spoken_language, 'French')))
 
-# count of English speaker 
+# count of English speaker: 94 
 nrow(data %>% 
   select(spoken_language) %>%
   filter(str_detect(spoken_language, 'English')))
@@ -176,6 +180,7 @@ nrow(data %>%
 ```
 
 ```{r Mother Tongue}
+# Add indicator function for each language
 language_df_II <- data %>% 
   select(mother_tongue) %>%
   mutate(English = ifelse(str_detect(mother_tongue, "English") | str_detect(mother_tongue, "Anglais"), TRUE, FALSE),
@@ -185,6 +190,7 @@ language_df_II <- data %>%
          Tagalog = ifelse(str_detect(mother_tongue,"Tagalog"), TRUE, FALSE),
          Anglais = ifelse(str_detect(mother_tongue,"Anglais"), TRUE, FALSE))   
 
+# Creat a matrix to store count of mother tongues
 language_count = matrix(NA, nrow = 6, ncol = 2)
 language_count[,1] <- names(language_df_II)[2:7]
 
@@ -213,19 +219,32 @@ rbind(language_count, data %>%
 ```
 
 ```{r Years of Studying French}
+# To check the distribution of years of studying French
+
+# group the year in 5-year interval
+year_of_studying_french_df <- data %>% 
+  mutate(year_group = case_when(year_of_french <= 5~"0 - 5",
+                                year_of_french > 5 & year_of_french <= 10 ~"5 - 10",
+                                year_of_french > 10 & year_of_french <= 15 ~"10 - 15",
+                                year_of_french > 15~"> 15")) %>%
+  select(year_group)
+
+# Obtain the grouped count and calculate the proportion 
 year_of_studying_french_df <- year_of_studying_french_df %>% 
+  group_by(year_group) %>%
   tally() %>% 
   mutate(per =`n`/sum(`n`),
         label = paste0(n, ' (', scales::percent(per), ')'))
 
 year_of_studying_french_df$year_group <- factor(year_of_studying_french_df$year_group, levels = c("0 - 5", "5 - 10", "10 - 15", "> 15"))
 
-
+# pie chart
 plot_ly(year_of_studying_french_df, labels = ~year_group, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
   layout(title = 'Year(s) of Studying French',
          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
 
+# bar chart
 year_of_studying_french_df %>% 
   ggplot(aes(x = year_group, y =n, fill=year_group)) +
   geom_col()+
@@ -233,29 +252,11 @@ year_of_studying_french_df %>%
   labs(x = 'Year(s) of Studying French', y = 'count') + 
   theme(legend.position = "none")
   #scale_fill_discrete(name = "Year(s) of Studying French") + 
-  
-
-
-# pie chart 
-#cowplot::plot_grid(year_of_studying_french_df %>% 
-#  tally() %>% 
-#  ggplot(aes(x="", y = n, fill=year_group))+
-#  geom_bar(width = 1, stat = "identity")+
-#  coord_polar("y") + 
-#  theme(legend.position = "none"),  
-#year_of_studying_french_df %>% 
-#  tally() %>% 
-#  ggplot(aes(x = year_group, y =n, fill=year_group)) +
-#  geom_col()+
-#  geom_text(aes(label = n), vjust = -0.5) + 
-#  labs(x = 'Years of Studying French', y = 'count') + 
-#  scale_fill_discrete(name = "Years of Studying French"),
-#ncol = 2)
 
 ```
 
 ```{r Preferred French to Learn, fig.height=3, fig.width=5}
-
+# calculate the grouped count and proportion
 preference_df <- data %>% 
   select(type_of_french) %>% 
   group_by(type_of_french) %>%
@@ -263,7 +264,7 @@ preference_df <- data %>%
   mutate(per =`n`/sum(`n`),
          label = paste0(n, ' (', scales::percent(per), ')'))
 
-
+# pie chart
 plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
   layout(title = 'Preferred Type of French to Learn',
          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
@@ -271,6 +272,8 @@ plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textp
 ```
 
 ```{r Lived/Spent time in French-speaking area}
+# reclean the data and divide the participants into four categories
+# live in Quebec, live in Frnace, live in other French-speaking, and none
 live_in_french_env_df <- as.data.frame(t(as.data.frame(data %>% 
   select(french_speaking_place)  %>% 
   group_by(french_speaking_place) %>% 
@@ -314,6 +317,7 @@ data %>%
 ```
 
 ```{r Teacher}
+# Group by the origins of French teachers
 data %>%
   select(teacher_origin, teacher_origin_other) %>%
   mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "Both French and Quebec", 'French and Quebec')) %>% 
@@ -333,6 +337,8 @@ data %>%
 
 # Recording Evaluation
 
+Speaker info for each speaker: 
+
 1A: Quebec. White.
 2A: French. Black.
 3A. Acadian. Black.
@@ -351,7 +357,7 @@ recording_temp <- data %>%
   # I will leave conjecture question aside for now 
   select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`))
 
-
+# rename the column to relect the speaker information 
 change <- function(df, oldpref, newpref) {
   df %>%
        rename_at(vars(starts_with(oldpref)), funs(sub(oldpref, newpref, .)))
@@ -370,6 +376,7 @@ recording_temp <- change(recording_temp, '8A', 'aca_w')
 recording_temp <- change(recording_temp, '9A', 'fr_w')
 recording_temp <- change(recording_temp, '10A', 'eng_b')
 
+# convert the ordinal variables to numeric. It makes no harm because we have more than 5 levels
 recording_temp <- as.data.frame(sapply(recording_temp, as.numeric))
 ```
 
@@ -385,7 +392,6 @@ beau_fr <- recording_temp %>%
   mutate(id = 1:nrow(recording_temp))
 
 # convert to long format
-
 beau_fr_long <- beau_fr %>%
   gather(key = "Accent", value = "value", Quebec, European, Acadian, English, African) %>%
   convert_as_factor(id, Accent)
@@ -395,18 +401,18 @@ beau_fr_long %>%
   group_by(Accent) %>%
   get_summary_stats(value, type = "mean_sd")
 
-# repeated measures ANOVA
+# Result of repeated measures ANOVA
 res_beau_fr<- get_anova_table(anova_test(data = beau_fr_long, dv = value, wid = id, within = Accent))
 
 # pairwise paired t-tests
-
 beau_fr_pw <- beau_fr_long %>%
   pairwise_t_test(
     value ~ Accent, paired = TRUE,
     p.adjust.method = "bonferroni"
     ) %>% mutate(y.position = c(seq(12,16.5, by = 0.5)))
-  #add_xy_position(x = "Accent") #  
+ 
 
+# This picture will be displayed along with plots of solitary dimensions
 p_beautiful <- ggboxplot(beau_fr_long, x = "Accent", y = "value", fill = "Accent") + 
   rremove('legend') + 
   rremove('xlab') + 
@@ -428,6 +434,7 @@ p_beautiful <- ggboxplot(beau_fr_long, x = "Accent", y = "value", fill = "Accent
 
 
 ```{r Solidarity dimension}
+# Combine the score of same accents
 sd_french <- recording_temp %>% 
   select(contains(c('_5', '_6', '_7'))) %>%
   mutate(que_dynamic = que_w_5 + que_b_5,
@@ -446,7 +453,7 @@ sd_french <- recording_temp %>%
          eng_social = eng_w_7 + eng_b_7,
          afr_social = afr_b_7 + afr_w_7)
 
-
+# Convert to long format
 dynamic_df <- sd_french %>% 
   select(que_dynamic, fr_dynamic, aca_dynamic, eng_dynamic, afr_dynamic) %>%
   rename(Quebec = que_dynamic,
@@ -482,8 +489,8 @@ social_df <- sd_french %>%
   convert_as_factor(id, accent)
 
 
-
 --------------------------------------------------------------------------------------------------------------
+# Perform repeated measures ANOVA and pair-wise t-tests are each solitary dimensions respectively  
 # Dynamic
 dynamic_df %>% 
   group_by(accent) %>%
@@ -617,11 +624,10 @@ colnames(res_tbl_ds) <- c('mean_Acadian', 'mean_African', 'mean_English','mean_E
 rownames(res_tbl_ds) <- c('Dynamic', 'Nice', 'Social')
 res_tbl_ds
 ```
-
+* General Perspective
 1) I think this is beautiful French.
 
 * Understandability
-
 2) Is it rather easy or difficult to understand the speaker?
 3) Would the person who did the recording be a good French teacher at UBC?
 4) The speaker’s accent is weak, strong, or absent?
@@ -638,6 +644,7 @@ res_tbl_ds
 
 
 ```{r Status traits}
+# Combine the scores of same accents
 st_french <- recording_temp %>% 
   select(contains(c('_8', '_9', '_10'))) %>%
   mutate(que_prof = que_w_8 + que_b_8,
@@ -656,7 +663,7 @@ st_french <- recording_temp %>%
          eng_edu = eng_w_10 + eng_b_10,
          afr_edu = afr_b_10 + afr_w_10)
 
-
+# Convert to long format
 prof_df <- st_french %>% 
   select(que_prof, fr_prof, aca_prof, eng_prof, afr_prof) %>%
   rename(Quebec = que_prof,
@@ -694,6 +701,8 @@ edu_df <- st_french %>%
 
 
 --------------------------------------------------------------------------------------------------------------
+# Perform repeated measures ANOVA and pair-wise t-tests are each status trait respectively  
+
 # Professional
 prof_df %>% 
   group_by(accent) %>%
@@ -838,6 +847,7 @@ accent_cols = recording_temp %>%
 
 recording_temp[,accent_cols] = lapply(accent_cols,  function(x) 7 - recording_temp[, x])
 
+# Combine the scores of same accent
 und_french <- recording_temp %>% 
   select(contains(c('_2', '_3', '_4'))) %>%
   mutate(que_und = que_w_2 + que_b_2,
@@ -856,7 +866,7 @@ und_french <- recording_temp %>%
          eng_acc = eng_w_4 + eng_b_4,
          afr_acc = afr_b_4 + afr_w_4)
 
-
+# Convert to long format
 und_df <- und_french %>% 
   select(que_und, fr_und, aca_und, eng_und, afr_und) %>%
   rename(Quebec = que_und,
@@ -892,6 +902,8 @@ acc_df <- und_french %>%
   convert_as_factor(id, accent)
 
 --------------------------------------------------------------------------------------------------------------
+# Perform repeated measures ANOVA and pair-wise t-tests  
+  
 # Easy to understand
 und_df %>% 
   group_by(accent) %>%
@@ -923,7 +935,6 @@ p_und <- ggboxplot(und_df, x = 'accent', y = "value", fill = "accent") +
         axis.title.y = element_text(size = 12),
         axis.text.y = element_text(size = 10),
         plot.title = element_text(size=15, face = 'bold'))
-
 
 --------------------------------------------------------------------------------------------------------------
 
@@ -1027,7 +1038,6 @@ res_tbl_und
 # Check the effect of race
 
 
-
 ```{r data cleaning}
 # re-clean the data: combine the score 
 
@@ -1086,12 +1096,17 @@ recording_df_long <- recording_df_long %>%
 
 ## t test and  Wilcoxon test
 ```{r two-sample t test}
+# black speakers
 b_df <- recording_df_long %>%
   filter(race == "black")
+# white speakers
 w_df <- recording_df_long %>%
   filter(race == "white")
 
+# one-sided t-test
 t.test(b_df$score, w_df$score, alternative= "greater") 
+
+# one-sided Wilcoxon test
 wilcox.test(b_df$score, w_df$score, alternative= "greater")
 
 ```
@@ -1121,7 +1136,7 @@ res.aov.twoway <- anova_test(
 get_anova_table(res.aov.twoway)  
 ```
 ```{r Two-way repeated measures ANOVA - result}
-
+# pairwise t-test
 pwc <- recording_df_long %>%
   group_by(accent) %>%
   pairwise_t_test(
@@ -1129,7 +1144,6 @@ pwc <- recording_df_long %>%
     p.adjust.method = "bonferroni",
     alternative = 'greater'
     )
-
 
 pwc <- pwc %>% add_xy_position(x = "accent")
 
@@ -1158,18 +1172,19 @@ recording_df_long %>%
   filter(accent == 'European' |
          accent == 'English') %>% 
   group_by(accent, race) %>%
-  summarise(mu = mean(score))
+  summarise(mu = mean(score),
+            sd = sd(score))
 ```
 
 
 ## LME 
 
 ```{r check random effect, fig.width=6, fig.height=10}
-# fit individual linear regression models to check within-suject difference
+# fit individual linear regression models to check within-subject difference
 fit_lm <- lme4::lmList(score ~ race + accent|id, data = as.data.frame(recording_df_long))
 
 plot(confint(fit_lm))
-# It's easy that the confidence interval for individual intecepst and individual slopes do not overlap suggesting that random effect may be need for both the interval and slopes in the mixed effect model. 
+# It's easy that the confidence interval for individual intercepts and individual slopes do not overlap suggesting that random effect may be need for both the interval and slopes in the mixed effect model. 
 ```
 
 ```{r change baseline}
@@ -1213,11 +1228,12 @@ qqnorm(resid(lme_3))
 
 
 ```{r Model estimate visualization}
+# plot
 sjPlot::plot_model(lme_3, 
                    axis.labels=c("Quebec Accent", "English Accent", "African Accent", "Acadian Accent", "Black Speakers"),
                    show.values=TRUE, show.p=TRUE,
                    title="Effect of Race and Accent on Lanaguage Attitude")
-
+# Table (this one is more explicit)
 sjPlot::tab_model(lme_3, 
                   show.re.var= TRUE, 
                   pred.labels =c("(Intercept)", "Black Speakers", "Acadian Accent", "African Accent", "English Accent", "Quebec Accent"),
