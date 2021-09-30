@@ -1265,8 +1265,17 @@ summary(gee_ex)
 summary(lm(score ~ race + accent + age + gender + num_of_language + type_of_french + teacher_origin, data = recording_df_long))
 ```
 
+Linear regression model
+$$
+y_{ij} = \beta_{0} + \beta_{1} x_{ij} + e_{ij}
+$$
 
+Linear mixed effect model
+$$
 
+y_{ij} = (\beta_{0} + b_{ij}) + (\beta_{1} + b_{i})x_{ij} + e_{ij}
+
+$$
 
 
 
