@@ -8,17 +8,29 @@ editor_options:
 # Setup 
 
 ```{r Load Package, message=FALSE}
+# read the excel 
 library(readxl)
+# visualization 
 library(ggplot2)
+
+# Data cleaning 
 library(scales)
 library(tidyverse)
-library(reshape2)
 library(tidyr)
 library(tidytext)
-library(rstatix)
+# Convert data from wide to long, long to wide 
+library(reshape2)
+
 library(ggpubr)
+# Repeated measures ANOA
+library(rstatix)
+
+# LME model (nlme),
 library(lme4)
+# demonstrate the results of LME
 library(sjPlot)
+# GEE model 
+library(geepack)
 ```
 
 
@@ -83,7 +95,8 @@ data$age <-  raw_data %>% select(Q2) %>% slice(2:n())
 data$age <- as.numeric(unlist(data$age))
 
 # summary data
-data %>% select(age) %>%
+data %>% 
+  select(age) %>%
   drop_na() %>%
   summarize(min = min(age),
             max = max(age),
@@ -1272,12 +1285,11 @@ $$
 
 Linear mixed effect model
 $$
-
 y_{ij} = (\beta_{0} + b_{ij}) + (\beta_{1} + b_{i})x_{ij} + e_{ij}
-
 $$
 
 
+Kruskal Wallis test
 
 
 
