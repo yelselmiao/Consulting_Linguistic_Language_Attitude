@@ -1107,7 +1107,7 @@ recording_df_long <- recording_df_long %>%
 
 
 
-## t test and  Wilcoxon test
+## Paired t test and  Wilcoxon test
 ```{r two-sample t test}
 # black speakers
 b_df <- recording_df_long %>%
@@ -1117,10 +1117,10 @@ w_df <- recording_df_long %>%
   filter(race == "white")
 
 # one-sided t-test
-t.test(b_df$score, w_df$score, alternative= "greater") 
+t.test(b_df$score, w_df$score, alternative= "greater", paired = TRUE) 
 
 # one-sided Wilcoxon test
-wilcox.test(b_df$score, w_df$score, alternative= "greater")
+wilcox.test(b_df$score, w_df$score, alternative= "greater", paired = TRUE)
 
 ```
 ## Two-way repeated measures ANOVA
@@ -1343,10 +1343,6 @@ recording_df_sum_con <- recording_df_sum %>%
   filter(continent != 'Europe')
 
 kruskal.test(score_sum ~ continent, data = recording_df_sum_con)
-
-recording_df_sum_con %>% 
-  dunn_test(score_sum ~ continent, p.adjust.method = "bonferroni") 
-
 ```
 
 
@@ -1382,8 +1378,9 @@ ggboxplot(recording_df_sum, x = "type_of_french", y = "score_sum",
           ylab = "Score", xlab = "Preferred Type of Language to Learn")
 ```
 
+### Accent
 
-```{r continent vs. accent, fig.width=8}
+```{r Boxplot: continent vs. accent, fig.width=8}
 recording_df_long %>%
   ggplot(aes(x=continent, y=score, fill=continent)) +
   geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
@@ -1397,57 +1394,36 @@ recording_df_long %>%
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
         axis.text.x=element_blank()) 
+  
+```
 
-
-recording_df_long %>%
-  ggplot(aes(x=accent, y=score, fill=accent)) +
-  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~continent) + 
-  viridis::scale_fill_viridis(discrete=T, name="") +
-  hrbrthemes::theme_ipsum() + 
+```{r Mean score of continent across accent,fig.width=8, fig.height=3}
+recording_df_long %>% 
+  group_by(continent, accent) %>% 
+  summarise(mean = mean(score)) %>% 
+  ggplot(aes(x=accent, y=mean,col=continent))+
+  geom_point() + 
+  geom_line(aes(group = continent)) + 
   theme_bw() + 
-  labs(x = 'Continent/Country of Birth', y = 'Score') + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Continent/Country of Birth') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x=element_blank()) 
-  
+        axis.text.x = element_text(size = 10)) 
 ```
 
-
-```{r continent vs. race, fig.width=6, fig.height=3}
-recording_df_long %>%
-  ggplot(aes(x=continent, y=score, fill=continent)) +
-  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~race) + 
-  viridis::scale_fill_viridis(discrete=T, name= '') +
-  hrbrthemes::theme_ipsum() + 
-  theme_bw() + 
-  labs(x = 'Continent/Country of Birth', y = 'Score') + 
-  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
-        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
-        axis.text.y = element_text(size = 10),
-         axis.text.x=element_blank()) 
-
-
-recording_df_long %>%
-  ggplot(aes(x=race, y=score, fill=race)) +
-  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~continent) + 
-  viridis::scale_fill_viridis(discrete=T, name= '') +
-  hrbrthemes::theme_ipsum() + 
-  theme_bw() + 
-  labs(x = 'Continent/Country of Birth', y = 'Score') + 
-  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
-        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
-        axis.text.y = element_text(size = 10),
-         axis.text.x=element_blank()) 
-  
+```{r KW-test on continent across accent}
+# accent vs. continent
+accent_df %>%
+  drop_na() %>%
+  filter(continent != 'Europe') %>%
+  group_by(accent) %>%
+  kruskal_test(score_sum ~ continent) 
 ```
 
-
-```{r teacher vs. accent, fig.width=8, fig.height= 5}
+```{r Boxplot: teacher vs. accent, fig.width=8, fig.height= 5}
 recording_df_long %>%
   #mutate(teacher_origin=replace(teacher_origin, teacher_origin=='Elsewhere (specify)', 'Elsewhere')) %>%
   filter(is.na(teacher_origin) == FALSE) %>%
@@ -1463,17 +1439,51 @@ recording_df_long %>%
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
         axis.text.x=element_blank()) 
+  
+```
 
-
-recording_df_long %>%
-  #mutate(teacher_origin=replace(teacher_origin, teacher_origin=='Elsewhere (specify)', 'Elsewhere')) %>%
+```{r Mean score of teach origins across accent, fig.height=3, fig.width=8}
+recording_df_long %>% 
   filter(is.na(teacher_origin) == FALSE) %>%
-  ggplot(aes(x=accent, y=score, fill=accent)) +
+  group_by(teacher_origin, accent) %>% 
+  summarise(mean = mean(score)) %>% 
+  ggplot(aes(x = accent, y=mean,col=teacher_origin))+
+  geom_point() + 
+  geom_line(aes(group = teacher_origin)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Origin of French Teacher') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+```
+
+```{r KW-test on origin of teach across accent}
+# accent vs. teacher_origin
+accent_df %>%
+  drop_na() %>% 
+  filter(teacher_origin != 'French and Quebec') %>%
+  group_by(accent) %>%
+  kruskal_test(score_sum ~ teacher_origin) 
+
+
+accent_df %>%
+  drop_na() %>% 
+  filter(teacher_origin != 'French and Quebec' & accent == 'Acadian') %>%
+  dunn_test(score_sum ~ teacher_origin, p.adjust.method = "bonferroni") 
+```
+
+```{r Boxplot: preference vs. accent, fig.width=8, fig.height= 5}
+recording_df_long %>%
+  filter(is.na(type_of_french) == FALSE) %>%
+  ggplot(aes(x=type_of_french, y=score, fill=type_of_french)) +
   geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~teacher_origin) + 
+  facet_wrap(~accent) + 
   viridis::scale_fill_viridis(discrete=T, name="") +
   hrbrthemes::theme_ipsum() + 
-  labs(x = 'Origin of French Teacher', y = 'Score') + 
+  labs(x = 'Preferred Type of French to Learn', y = 'Score') + 
   theme_bw() + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
@@ -1481,11 +1491,55 @@ recording_df_long %>%
         axis.text.y = element_text(size = 10),
         axis.text.x=element_blank()) 
   
+```
+
+```{r Mean score of preference across accent, fig.height=3, fig.width=8}
+recording_df_long %>% 
+  filter(is.na(type_of_french) == FALSE) %>%
+  group_by(type_of_french, accent) %>% 
+  summarise(mean = mean(score)) %>% 
+  ggplot(aes(x = accent, y=mean,col=type_of_french))+
+  geom_point() + 
+  geom_line(aes(group = type_of_french)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Preferred Type of French to Learn') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+```
+
+### Race
+
+
+
+
+```{r Boxplot: continent vs. race, fig.width=6, fig.height=3}
+recording_df_long %>%
+  ggplot(aes(x=continent, y=score, fill=continent)) +
+  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
+  facet_wrap(~race) + 
+  viridis::scale_fill_viridis(discrete=T, name= '') +
+  hrbrthemes::theme_ipsum() + 
+  theme_bw() + 
+  labs(x = 'Continent/Country of Birth', y = 'Score') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        axis.text.y = element_text(size = 10),
+         axis.text.x=element_blank()) 
+
   
 ```
 
 
-```{r teacher vs. race, fig.width=6, fig.height=3}
+
+
+
+
+
+```{r Boxplot: teacher vs. race, fig.width=6, fig.height=3}
 recording_df_long %>%
   filter(is.na(teacher_origin) == FALSE) %>%
   ggplot(aes(x=teacher_origin, y=score, fill=teacher_origin)) +
@@ -1503,41 +1557,8 @@ recording_df_long %>%
 ```
 
 
-```{r preference vs. accent, fig.width=8, fig.height= 5}
-recording_df_long %>%
-  filter(is.na(type_of_french) == FALSE) %>%
-  ggplot(aes(x=type_of_french, y=score, fill=type_of_french)) +
-  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~accent) + 
-  viridis::scale_fill_viridis(discrete=T, name="") +
-  hrbrthemes::theme_ipsum() + 
-  labs(x = 'Preference for French Accent', y = 'Score') + 
-  theme_bw() + 
-  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
-        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
-        strip.text = element_text(size=12),
-        axis.text.y = element_text(size = 10),
-        axis.text.x=element_blank()) 
 
-
-recording_df_long %>%
-  filter(is.na(type_of_french) == FALSE) %>%
-  ggplot(aes(x=accent, y=score, fill=accent)) +
-  geom_boxplot(outlier.colour=NA, position=position_dodge(1)) +
-  facet_wrap(~type_of_french) + 
-  viridis::scale_fill_viridis(discrete=T, name="") +
-  hrbrthemes::theme_ipsum() + 
-  labs(x = 'Preference for French Accent', y = 'Score') + 
-  theme_bw() + 
-  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
-        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
-        strip.text = element_text(size=12),
-        axis.text.y = element_text(size = 10),
-        axis.text.x=element_blank()) 
-  
-```
-
-```{r Preference vs. race, fig.width=6, fig.height=3}
+```{r Boxplot: Preference vs. race, fig.width=6, fig.height=3}
 recording_df_long %>%
   filter(is.na(type_of_french) == FALSE) %>%
   ggplot(aes(x=type_of_french, y=score, fill=type_of_french)) +
@@ -1554,7 +1575,118 @@ recording_df_long %>%
   
 ```
 
+```{r KW test on Race}
+race_res <- matrix(NA, ncol = 4, nrow = 6)
 
+race_res[1:3, 1] <- 'black'
+race_res[4:6, 1] <- 'white'
+
+race_res[c(1:3, 4:6), 2] <- c('Continent/Countrty of Birth', 'Origins of French Teacher', 'Preferred Type of French to Learn')
+
+race_res[c(1, 4), 3] <- pull(race_df %>%
+  drop_na() %>%
+  filter(continent != 'Europe') %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ continent) %>%
+  mutate_at(vars(statistic), funs(round(., 2))) %>% 
+  select(statistic))
+
+race_res[c(2, 5), 3] <- pull(race_df %>%
+  drop_na() %>%
+  filter(teacher_origin != 'French and Quebec') %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ teacher_origin) %>%
+  mutate_at(vars(statistic), funs(round(., 2))) %>% 
+  select(statistic))
+
+race_res[c(3, 6), 3] <- pull(race_df %>%
+  drop_na() %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ type_of_french) %>%
+  mutate_at(vars(statistic), funs(round(., 2))) %>% 
+  select(statistic))
+
+race_res[c(1, 4), 4] <- pull(race_df %>%
+  drop_na() %>%
+  filter(continent != 'Europe') %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ continent) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  select(p))
+
+race_res[c(2, 5), 4] <- pull(race_df %>%
+  drop_na() %>%
+  filter(teacher_origin != 'French and Quebec') %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ teacher_origin) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  select(p))
+
+race_res[c(3, 6), 4] <- pull(race_df %>%
+  drop_na() %>%
+  group_by(race) %>%
+  kruskal_test(score_sum ~ type_of_french) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  select(p))
+
+race_res <- as.data.frame(race_res)
+colnames(race_res) <- c('Race', 'Group Var', 'Test Statistics', 'P-value')
+race_res
+```
+
+
+```{r Paired Two-sample Test on Race}
+
+bind_cols(
+recording_df_long %>% 
+  group_by(continent, race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = race, values_from = race_mean),
+
+recording_df_long %>%
+  group_by(continent) %>%
+  wilcox_test(score ~ race, paired = TRUE) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 0))) %>% 
+  select(statistic, p))
+
+
+
+bind_cols(
+recording_df_long %>% 
+  filter(is.na(teacher_origin) == FALSE) %>% 
+  group_by(teacher_origin, race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = race, values_from = race_mean),
+
+recording_df_long %>%
+  filter(is.na(teacher_origin) == FALSE) %>% 
+  group_by(teacher_origin) %>%
+  wilcox_test(score ~ race, paired = TRUE) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 0))) %>% 
+  select(statistic, p))
+
+
+bind_cols(
+recording_df_long %>% 
+  filter(is.na(type_of_french) == FALSE) %>% 
+  group_by(type_of_french, race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = race, values_from = race_mean),
+
+recording_df_long %>%
+  filter(is.na(type_of_french) == FALSE) %>% 
+  group_by(type_of_french) %>%
+  wilcox_test(score ~ race, paired = TRUE) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 0))) %>% 
+  select(statistic, p))
+
+```
 
 
 ```{r}
@@ -1564,90 +1696,13 @@ summary(lm(score ~ continent + accent + continent*accent, data = recording_df_lo
 
 
 ```{r}
-summary(lm(score ~ continent + accent + race + type_of_french + teacher_origin, data = recording_df_long))
+summary(lm(score ~ accent + race + continent + type_of_french + teacher_origin, data = recording_df_long))
 ```
 
 ```{r}
-accent_df <- recording_temp_long_sep %>%
-  group_by(id, accent) %>% 
-  summarise(score_sum = sum(score)) %>% 
-  left_join(recording_df_sum %>% select(id, gender, age, continent,teacher_origin, type_of_french), by = 'id') %>%
-  mutate_if(is.character, as.factor) %>%
-  ungroup()
-
-summary(lm(score_sum ~ accent + continent, data = accent_df))
-
-# accent vs. continent
-accent_df %>%
-  drop_na() %>%
-  filter(continent != 'Europe') %>%
-  group_by(accent) %>%
-  kruskal_test(score_sum ~ continent) 
-
-# accent vs. teacher_origin
-accent_df %>%
-  drop_na() %>% 
-  filter(teacher_origin != 'French and Quebec') %>%
-  group_by(accent) %>%
-  kruskal_test(score_sum ~ teacher_origin) 
-
-# accent vs. preferred_type_of_french
-accent_df %>%
-  drop_na() %>%
-  group_by(accent) %>%
-  kruskal_test(score_sum ~ type_of_french) 
-
+lme_4 <-  lmer(score ~ race + accent + continent + type_of_french + teacher_origin +  (1 + accent|id), data = as.data.frame(recording_df_long))
+summary(lme_4,correlation=TRUE)
 ```
-
-```{r}
-race_df <- recording_temp_long_sep %>%
-  group_by(id, race) %>% 
-  summarise(score_sum = sum(score)) %>%
-  left_join(recording_df_sum %>% select(id, gender, age, continent,teacher_origin, type_of_french), by = 'id') %>%
-  mutate_if(is.character, as.factor) %>%
-  ungroup()
-
-# race vs. continent
-race_df %>%
-  drop_na() %>%
-  filter(continent != 'Europe') %>%
-  group_by(race) %>%
-  kruskal_test(score_sum ~ continent) 
-
-# race vs. teacher_origin
-race_df %>%
-  drop_na() %>%
-  filter(teacher_origin != 'French and Quebec') %>%
-  group_by(race) %>%
-  kruskal_test(score_sum ~ teacher_origin) 
-
-# race vs. preferred_type_of_french
-race_df %>%
-  drop_na() %>%
-  group_by(race) %>%
-  kruskal_test(score_sum ~ type_of_french) 
-
-race_df %>%
-  drop_na() %>%
-  filter(race == 'Black') %>%
-  dunn_test(score_sum ~ continent) 
-```
-
-```{r}
-accent_df %>%
-  drop_na() %>%
-  filter(continent != 'Europe') %>%
-  group_by(accent) %>%
-  kruskal_test(score_sum ~ continent) 
-
-
-accent_df %>%
-  drop_na() %>%
-  filter(continent != 'Europe') %>%
-  group_by(continent) %>%
-  kruskal_test(score_sum ~ accent) 
-```
-
 
 
 
@@ -1685,10 +1740,7 @@ recording_temp_long_sep <- recording_temp %>%
 
 ```
 
-```{r}
-table(recording_df_sum$type_of_french)
 
-```
 
 
 ```{r fig.width=6, fig.height=2}
@@ -1730,46 +1782,7 @@ recording_temp_long_sep %>%
 
 
 
-```{r Two-way repeated measures ANOVA}
-twoway.teacher.accent <- anova_test(
-  data = recording_df_long, dv = score, wid = id,
-  within = c(accent, teacher_origin)
-  )
-get_anova_table(twoway.teacher.accent)  
-```
 
-
-```{r Two-way repeated measures ANOVA - result}
-# pairwise t-test
-pwc <- recording_df_long %>%
-  group_by(accent) %>%
-  pairwise_t_test(
-    score ~ race, paired = TRUE,
-    p.adjust.method = "bonferroni",
-    alternative = 'greater'
-    )
-
-pwc <- pwc %>% add_xy_position(x = "accent")
-
-
-ggboxplot(
-  recording_df_long, x = "accent", y = "score",
-  color = "race", palette = "jco"
-  ) + 
-  stat_pvalue_manual(pwc, tip.length = 0, hide.ns = TRUE) +
-  labs(
-    subtitle = get_test_label(res.aov, detailed = TRUE),
-    caption = get_pwc_label(pwc),
-    y = 'Score',
-    x = 'Accent'
-  ) + 
-  theme(axis.title.x = element_text(size = 15,face = 'bold'),
-        axis.title.y = element_text(size = 15,face = 'bold'),
-        axis.text.y = element_text(size = 15),
-        axis.text.x = element_text(size = 15))
-
-pwc
-```
 
 
 
