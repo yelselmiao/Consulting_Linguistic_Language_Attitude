@@ -1252,6 +1252,16 @@ sjPlot::tab_model(lme_3,
                   pred.labels =c("(Intercept)", "Black Speakers", "Acadian Accent", "African Accent", "English Accent", "Quebec Accent"),
                   dv.labels= "Effect of Race and Accent on Lanaguage Attitude")
 ```
+
+```{r Add interaction term to LME}
+lme_4 <-  lmer(score ~ race + accent + race*accent + (1 + accent|id), data = as.data.frame(recording_df_long))
+
+sjPlot::tab_model(lme_4, 
+                  show.re.var= TRUE) 
+```
+
+
+
 ## GEE
 
 ```{r GEE model}
@@ -1687,26 +1697,44 @@ recording_df_long %>%
   select(statistic, p))
 
 ```
+```{r Three-way ANOVA}
+recording_df_long_full <- recording_df_long %>% filter(id != '17' & id != '25')
+
+(res_type_of_french <- get_anova_table(recording_df_long_full %>% 
+  select(id, score, race, accent, type_of_french) %>%
+  anova_test(
+  dv = score, wid = id,
+  within = c(accent, race),
+  between = c(type_of_french)
+  )))
 
 
-```{r}
-summary(lm(score ~ continent + accent + continent*accent, data = recording_df_long))
+(res_continent <- get_anova_table(recording_df_long_full %>% 
+  select(id, score, race, accent, continent) %>%
+  filter(continent != 'Europe') %>%
+  anova_test(
+  dv = score, wid = id,
+  within = c(accent, race),
+  between = c(continent)
+  )))
+
+(res_teacher <- get_anova_table(recording_df_long_full %>% 
+  select(id, score, race, accent, teacher_origin) %>%
+  filter(teacher_origin != 'French and Quebec') %>%
+  anova_test(
+  dv = score, wid = id,
+  within = c(accent, race),
+  between = c(teacher_origin)
+  )))
+
 
 ```
 
+```{r Full LME model}
 
-```{r}
-summary(lm(score ~ accent + race + continent + type_of_french + teacher_origin, data = recording_df_long))
+sjPlot::tab_model(lme_4, 
+                  show.re.var= TRUE) 
 ```
-
-```{r}
-lme_4 <-  lmer(score ~ race + accent + continent + type_of_french + teacher_origin +  (1 + accent|id), data = as.data.frame(recording_df_long))
-summary(lme_4,correlation=TRUE)
-```
-
-
-
-
 
 
 ## Preferred type of french to learn
@@ -1743,7 +1771,7 @@ recording_temp_long_sep <- recording_temp %>%
 
 
 
-```{r fig.width=6, fig.height=2}
+```{r fig.width=5.5, fig.height=2}
 recording_temp_long_sep %>% 
   filter(trail %in% c('que_w_1', 'que_b_1', 'fr_b_1', 'fr_w_1', 'aca_b_1', 'aca_w_1', 'eng_w_1', 'eng_b_1', 'afr_w_1', 'afr_b_1')) %>%
   select(id, score, type_of_french, accent) %>% 
@@ -1753,11 +1781,14 @@ recording_temp_long_sep %>%
   ggplot(aes(x = accent, fill = score)) + 
   geom_bar(stat = "count", position = "stack") + 
   viridis::scale_fill_viridis(discrete = T) + 
-  ggtitle('Is this beautiful French?') + 
+  ggtitle('Is this beautiful French?',
+          subtitle = 'Grouped by Preferred Type of French to Learn') + 
+  labs(x = 'Accent', y = 'Count') + 
   hrbrthemes::theme_ipsum() + 
   facet_wrap(~type_of_french, scales = "free_y") + 
-  theme(axis.title.x = element_text(size = 15,face = 'bold'),
-        axis.title.y = element_text(size = 15,face = 'bold'))
+  theme(axis.title.x = element_text(size = 15,face = 'bold', hjust = 0.5),
+        axis.title.y = element_text(size = 15,face = 'bold', hjust = 0.5),
+        plot.subtitle= element_text(size= 13, hjust=0.5, face="italic", color="black"))
         #axis.text.y = element_text(size = 15),
         #axis.text.x = element_text(size = 15)) + 
   
@@ -1770,16 +1801,65 @@ recording_temp_long_sep %>%
   mutate(score = as.factor(score)) %>% 
   group_by(accent) %>% 
   ggplot(aes(x = accent, fill = score)) + 
-  geom_bar(stat = "count", position = "stack") + 
+  geom_bar(stat = "count", position = "stack") +  
   viridis::scale_fill_viridis(discrete = T) + 
   hrbrthemes::theme_ipsum() + 
   facet_wrap(~type_of_french, scales = "free_y") +
-  ggtitle('Would the person who did the recording be a good French teacher at UBC?') + 
-  theme(axis.title.x = element_text(size = 15,face = 'bold'),
-        axis.title.y = element_text(size = 15,face = 'bold'))
+  labs(x = 'Accent', y = 'Count') + 
+  ggtitle('Would the person who did the recording be a good French teacher at UBC?',
+          subtitle = 'Grouped by Preferred Type of French to Learn') + 
+  theme(axis.title.x = element_text(size = 15,face = 'bold',hjust = 0.5),
+        axis.title.y = element_text(size = 15,face = 'bold',hjust = 0.5),
+        plot.subtitle= element_text(size= 13, hjust=0.5, face="italic", color="black")) 
   
 ```
 
+```{r fig.width=4, fig.height=3}
+recording_temp_long_sep %>% 
+  filter(trail %in% c('que_w_1', 'que_b_1', 'fr_b_1', 'fr_w_1', 'aca_b_1', 'aca_w_1', 'eng_w_1', 'eng_b_1', 'afr_w_1', 'afr_b_1')) %>%
+  select(id, score, teacher_origin, accent) %>% 
+  filter(is.na(teacher_origin) == FALSE) %>%
+  mutate_if(is.character,as.factor) %>% 
+  mutate(score = as.factor(score)) %>% 
+  group_by(accent) %>% 
+  ggplot(aes(x = accent, fill = score)) + 
+  geom_bar(stat = "count", position = "stack") + 
+  viridis::scale_fill_viridis(discrete = T) + 
+  ggtitle('Is this beautiful French?',
+          subtitle = 'Grouped by Origin of French Teacher') + 
+  labs(x = 'Accent', y = 'Count') + 
+  hrbrthemes::theme_ipsum() + 
+  facet_wrap(~teacher_origin, scales = "free_y", ncol = 2) + 
+  theme(axis.title.x = element_text(size = 15,face = 'bold', hjust = 0.5),
+        axis.title.y = element_text(size = 15,face = 'bold', hjust = 0.5),
+        plot.subtitle= element_text(size= 13, hjust=0.5, face="italic", color="black"))
+        #axis.text.y = element_text(size = 15),
+        #axis.text.x = element_text(size = 15)) + 
+  
+```
+
+
+
+```{r fig.width=4, fig.height=3}
+recording_temp_long_sep %>% 
+  filter(trail %in% c('que_w_3', 'que_b_3', 'fr_b_3', 'fr_w_3', 'aca_b_3', 'aca_w_3', 'eng_w_3', 'eng_b_3', 'afr_w_3', 'afr_b_3')) %>%
+  select(id, score, teacher_origin, accent) %>% 
+  filter(is.na(teacher_origin) == FALSE) %>%
+  mutate_if(is.character,as.factor) %>% 
+  mutate(score = as.factor(score)) %>% 
+  group_by(accent) %>% 
+  ggplot(aes(x = accent, fill = score)) + 
+  geom_bar(stat = "count", position = "stack") + 
+  viridis::scale_fill_viridis(discrete = T) + 
+  hrbrthemes::theme_ipsum() + 
+  labs(x = 'Accent', y = 'Count') + 
+  facet_wrap(~teacher_origin, scales = "free_y", ncol = 2) +
+  ggtitle('Would the person who did the recording be a good French teacher at UBC?',
+          subtitle = 'Grouped by Origin of French Teacher') + 
+  theme(axis.title.x = element_text(size = 15,face = 'bold',hjust = 0.5),
+        axis.title.y = element_text(size = 15,face = 'bold',hjust = 0.5),
+        plot.subtitle= element_text(size= 13, hjust=0.5, face="italic", color="black")) 
+```
 
 
 
