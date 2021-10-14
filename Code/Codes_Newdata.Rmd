@@ -1210,7 +1210,6 @@ recording_df_long <- within(recording_df_long, race <-  relevel(race, ref ='whit
 recording_df_long <- within(recording_df_long, accent <-  relevel(accent, ref ='European'))
 ```
 
-
 ```{r Fit LMEs}
 # adding random effect to intercept 
 lme_1 <-  lmer(score ~ race + accent + (1|id), data = as.data.frame(recording_df_long))
@@ -1232,6 +1231,8 @@ summary(lme_3)
 anova(lme_1, lme_2, lme_3)
 # the random intercept and random accent model lme_3 obviously fits the best because of its smallest AIC and BIC. In additional, the p-value indicates the significance. 
 ```
+
+
 ```{r Check assumptions}
 plot(lme_3, xlab = 'Fitted Values', ylab = 'Standardized Residuals')
 
@@ -1253,13 +1254,73 @@ sjPlot::tab_model(lme_3,
                   dv.labels= "Effect of Race and Accent on Lanaguage Attitude")
 ```
 
-```{r Add interaction term to LME}
-lme_4 <-  lmer(score ~ race + accent + race*accent + (1 + accent|id), data = as.data.frame(recording_df_long))
 
-sjPlot::tab_model(lme_4, 
-                  show.re.var= TRUE) 
+```{r New: Fit LMEs}
+# random intercept
+lme_4 <-  lmer(score ~ race + accent + race*accent + (1|id), data = as.data.frame(recording_df_long), REML = FALSE, 
+          control = lmerControl(
+                           optimizer ='optimx', optCtrl=list(method='nlminb')))
+
+# random intercept and random slope for accent
+lme_5 <-  lmer(score ~ race + accent + race*accent + (1 + accent|id), data = as.data.frame(recording_df_long), REML = FALSE, 
+          control = lmerControl(
+                           optimizer ='optimx', optCtrl=list(method='nlminb')))
+
+
+# random intercept and random slope for accent and race
+lme_6 <-  lmer(score ~ race + accent + race*accent + (1 + race + accent|id), data = as.data.frame(recording_df_long), REML = FALSE, 
+          control = lmerControl(
+                           optimizer ='optimx', optCtrl=list(method='nlminb')))
+
+# random intercept and random slope for accent and race
+lme_7 <-  lmer(score ~ race + accent + race*accent + (1 + race|id), data = as.data.frame(recording_df_long), REML = FALSE, 
+          control = lmerControl(
+                           optimizer ='optimx', optCtrl=list(method='nlminb')))
 ```
 
+```{r New: Compare LMEs}
+anova(lme_4,lme_5, lme_6, lme_7)
+```
+
+
+```{r New: Check assumptions}
+plot(lme_5, xlab = 'Fitted Values', ylab = 'Standardized Residuals')
+
+# qqplot
+qqnorm(resid(lme_5))
+```
+
+
+```{r New: Model estimate visualization}
+# summary 
+summary(lme_5)
+
+# plot
+sjPlot::plot_model(lme_5, 
+                   #axis.labels=c("Quebec Accent", "English Accent", "African Accent", "Acadian Accent", "Black Speakers"),
+                   show.values=TRUE, show.p=TRUE,
+                   title="Effect of Race and Accent on Lanaguage Attitude")
+# Table (this one is more explicit)
+sjPlot::tab_model(lme_5, 
+                  show.re.var= TRUE, 
+                  #pred.labels =c("(Intercept)", "Black Speakers", "Acadian Accent", "African Accent", "English Accent", "Quebec Accent"),
+                  dv.labels= "Effect of Race and Accent on Lanaguage Attitude")
+```
+
+```{r Model estimate in latex format}
+stargazer::stargazer(lme_5, type = 'text')
+```
+
+```{r Interaction Plot}
+interaction.plot(x.factor = recording_df_long$accent, #x-axis variable
+                 trace.factor = recording_df_long$race, #variable for lines
+                 response = recording_df_long$score)
+```
+
+```{r Marginal Mean}
+em_lme_5 <- (emmeans(lme_5, ~ accent*race))
+em_lme_5
+```
 
 
 ## GEE
@@ -1282,13 +1343,42 @@ gee_ex <- geeglm(score ~ race + accent,
 
 summary(gee_ex)
 ```
+
+
+```{r New: GEE model}
+
+geeglm(score ~ race + accent + race*accent,
+       id = id,
+       data = recording_df_long,
+       family = gaussian,
+       corstr = "independence")
+
+geeglm(score ~ race + accent + race*accent,
+       id = id,
+       data = recording_df_long,
+       family = gaussian,
+       corstr = "ar1")
+
+
+gee_ex_new <- geeglm(score ~ race + accent + race*accent,
+       id = id,
+       data = recording_df_long,
+       family = gaussian,
+       corstr = "exchangeable")
+
+
+summary(gee_ex_new)
+```
+
+
+
 ## Linear Regression Model
 
 ```{r Fit a unverse linear regression model}
-summary(lm(score ~ race + accent + age + gender + num_of_language + type_of_french + teacher_origin, data = recording_df_long))
+summary(lm(score ~ race + accent + race*accent, data = recording_df_long))
 ```
 
-Linear regression model
+Linear regression model (demo)
 $$
 y_{ij} = \beta_{0} + \beta_{1} x_{ij} + e_{ij}
 $$
