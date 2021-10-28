@@ -286,7 +286,7 @@ plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textp
 
 ```{r Lived/Spent time in French-speaking area}
 # reclean the data and divide the participants into four categories
-# live in Quebec, live in Frnace, live in other French-speaking, and none
+# live in Quebec, live in France, live in other French-speaking, and none
 live_in_french_env_df <- as.data.frame(t(as.data.frame(data %>% 
   select(french_speaking_place)  %>% 
   group_by(french_speaking_place) %>% 
@@ -399,14 +399,14 @@ beau_fr <- recording_temp %>%
   mutate(Quebec = rowSums(.[1:2]),
          European = rowSums(.[3:4]),
          Acadian = rowSums(.[5:6]),
-         English = rowSums(.[7:8]),
+         `L2 French` = rowSums(.[7:8]),
          African = rowSums(.[9:10]))  %>%
   select(c(11:15)) %>%
   mutate(id = 1:nrow(recording_temp))
 
 # convert to long format
 beau_fr_long <- beau_fr %>%
-  gather(key = "Accent", value = "value", Quebec, European, Acadian, English, African) %>%
+  gather(key = "Accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, Accent)
 
 # summary stat: the stats of Quebec French and European French is pretty similar
@@ -472,11 +472,11 @@ dynamic_df <- sd_french %>%
   rename(Quebec = que_dynamic,
          European = fr_dynamic,
          Acadian = aca_dynamic,
-         English = eng_dynamic,
+         `L2 French` = eng_dynamic,
          African = afr_dynamic
          ) %>% 
   mutate(id = 1: nrow(sd_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 nice_df <- sd_french %>% 
@@ -484,10 +484,10 @@ nice_df <- sd_french %>%
   rename(Quebec = que_nice,
          European = fr_nice,
          Acadian = aca_nice,
-         English = eng_nice,
+         `L2 French` = eng_nice,
          African = afr_nice) %>% 
   mutate(id = 1: nrow(sd_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 social_df <- sd_french %>% 
@@ -495,10 +495,10 @@ social_df <- sd_french %>%
   rename(Quebec = que_social,
          European = fr_social,
          Acadian = aca_social,
-         English = eng_social,
+         `L2 French` = eng_social,
          African = afr_social) %>% 
   mutate(id = 1: nrow(sd_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 
@@ -682,11 +682,11 @@ prof_df <- st_french %>%
   rename(Quebec = que_prof,
          European = fr_prof,
          Acadian = aca_prof,
-         English = eng_prof,
+         `L2 French` = eng_prof,
          African = afr_prof
          ) %>% 
   mutate(id = 1: nrow(st_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 lead_df <- st_french %>% 
@@ -694,10 +694,10 @@ lead_df <- st_french %>%
   rename(Quebec = que_lead,
          European = fr_lead,
          Acadian = aca_lead,
-         English = eng_lead,
+         `L2 French` = eng_lead,
          African = afr_lead) %>% 
   mutate(id = 1: nrow(st_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 edu_df <- st_french %>% 
@@ -705,10 +705,10 @@ edu_df <- st_french %>%
   rename(Quebec = que_edu,
          European = fr_edu,
          Acadian = aca_edu,
-         English = eng_edu,
+         `L2 French` = eng_edu,
          African = afr_edu) %>% 
   mutate(id = 1: nrow(st_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 
@@ -885,11 +885,11 @@ und_df <- und_french %>%
   rename(Quebec = que_und,
          European = fr_und,
          Acadian = aca_und,
-         English = eng_und,
+         `L2 French` = eng_und,
          African = afr_und
          ) %>% 
   mutate(id = 1: nrow(und_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 teach_df <- und_french %>% 
@@ -897,10 +897,10 @@ teach_df <- und_french %>%
   rename(Quebec = que_teach,
          European = fr_teach,
          Acadian = aca_teach,
-         English = eng_teach,
+         `L2 French` = eng_teach,
          African = afr_teach) %>% 
   mutate(id = 1: nrow(und_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 acc_df <- und_french %>% 
@@ -908,10 +908,10 @@ acc_df <- und_french %>%
   rename(Quebec = que_acc,
          European = fr_acc,
          Acadian = aca_acc,
-         English = eng_acc,
+         `L2 French` = eng_acc,
          African = afr_acc) %>% 
   mutate(id = 1: nrow(und_french)) %>% 
-    gather(key = "accent", value = "value", Quebec, European, Acadian, English, African) %>%
+    gather(key = "accent", value = "value", Quebec, European, Acadian, `L2 French`, African) %>%
   convert_as_factor(id, accent)
 
 --------------------------------------------------------------------------------------------------------------
@@ -1007,7 +1007,7 @@ p_acc <- ggboxplot(acc_df, x = 'accent', y = "value", fill = "accent") +
   labs(
     subtitle = get_test_label(res_acc, detailed = TRUE),
     caption = get_pwc_label(acc_pw),
-    title = 'Weak Accent',
+    title = 'Mild Accent',
     y = 'Score',
   ) + 
   theme(plot.caption = element_text(size=12),
@@ -1044,9 +1044,16 @@ res_tbl_und[, 7] <- c(res_und$p, res_teach$p, res_acc$p)
 
 res_tbl_und <- as.data.frame(res_tbl_und)
 colnames(res_tbl_und) <- c('mean_Acadian', 'mean_African', 'mean_English','mean_European', 'mean_Quebec', 'F', 'p-value')
-rownames(res_tbl_und) <- c('Easy to Understand', 'Good French Teacher', 'Weak Accent')
+rownames(res_tbl_und) <- c('Easy to Understand', 'Good French Teacher', 'Mild Accent')
 res_tbl_und
 ```
+
+```{r}
+acc_pw
+```
+
+
+
 
 # Check the effect of race
 
@@ -1127,6 +1134,10 @@ wilcox.test(b_df$score, w_df$score, alternative= "greater", paired = TRUE)
 
 
 ```{r violin plot, fig.width=6, fig.height=3}
+recording_df_long <- recording_df_long %>%
+  mutate(accent = as.character(accent)) %>%   
+  mutate(accent = replace(accent, accent == 'English', 'L2 French'))
+
 recording_df_long %>%
   ggplot(aes(x=accent, y=score, fill=race)) +
   geom_violin(position=position_dodge(1), alpha=0.5) + 
