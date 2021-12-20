@@ -1,0 +1,188 @@
+---
+title: "Analysis III"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+1) Variables to look at:
+
+- Race (last column. But many students have not answered. So I’m not sure you’ll be able to do anything with this!)
+
+- Gender (same here, not sure you can do the stats on this, many women + too few men)
+
+- Where they grew up (that’s a column I added)
+
+- # of languages spoken 
+
+- # of years of studying French
+
+- origin of teachers  (done)
+
+No need to look at their field of study. I didn’t translate that column.
+
+2) The scale is the same:
+
+1: I strongly agree
+
+2: I agree
+
+3: I slightly agree
+
+4: I slightly disagree
+
+5: I disagree
+
+6. I strongly disagree
+
+
+
+
+```{r Load Package, message=FALSE}
+library(readxl)
+library(ggplot2)
+
+library(scales)
+library(tidyverse)
+library(tidyr)
+library(tidytext)
+library(reshape2)
+
+library(ggpubr)
+library(rstatix)
+
+```
+
+
+```{r}
+#Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi <- read_excel("Data/Les différents accents du français - November 1 2021 - ENG for Shuyi.xlsx")
+
+raw_data <- Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi
+
+data <- raw_data[-1, ]
+
+names(data)
+```
+
+```{r}
+data <- data %>%
+  select(-c(Q43...144, ...147, QID18_1, QID18_2, QID18_3, QID18_4,
+            QID18_5, QID18_6, QID18_7, QID18_8, QID18_9, QID18_10, QID19)) %>%
+  rename(gender = Q1,
+         gender_other = Q1_4_TEXT, 
+         age = Q2,
+         country_of_birth = Q3,
+         grow_up_country = ...8, 
+         grow_up_province = Q41,
+         grow_up_city = Q4,
+         field_of_study = Q5,
+         num_of_language = Q6,
+         spoken_language = Q42, 
+         #spoken_language_other = Q42_11_TEXT,
+         mother_tongue = Q7,
+         mother_tongue_other = Q7_11_TEXT,
+         year_of_french = Q8,
+         french_speaking_place = Q9,
+         french_speaking_place_other = Q9_6_TEXT,
+         month_live_in_fr_env = Q43...18,
+         type_of_french = Q10,
+         type_of_french_other = Q10_3_TEXT,
+         teacher_origin = Q11, 
+         teacher_origin_other = Q11_3_TEXT,
+         race = RACE
+         )
+```
+
+```{r gender prop}
+data %>% 
+  group_by(gender) %>%
+  tally()
+```
+
+
+```{r race prop}
+data %>% 
+  group_by(race) %>% 
+  tally()
+```
+
+
+```{r Grow-up Country}
+data %>% 
+  filter(str_detect(grow_up_country, 'Canada')) %>% 
+  group_by(grow_up_country) %>% 
+  tally()
+# Out of 153 people who have answered this question, 99 people grew up in Canada, and another 9 people grew in both Canada and some other country. 
+
+
+data %>% 
+  drop_na(grow_up_country) %>% 
+  filter(str_detect(grow_up_country, ',') |
+           str_detect(grow_up_country, 'and'))%>% 
+  group_by(grow_up_country) %>% 
+  tally()
+
+# 13 people grew up in more than one country 
+
+
+data %>% 
+  drop_na(grow_up_country) %>% 
+  filter(!str_detect(grow_up_country, ',') &
+         !str_detect(grow_up_country, 'and')) %>% 
+  filter(grow_up_country != 'Canada') %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa'
+                               )) %>% 
+  group_by(grow_up_continent) %>% 
+  tally() 
+
+# For 140 people grew up in one country, excludind 99 who grew up in Canada, 25 ppl grew up in Asia, 10 grew up in America, 5 in Europe, amd one in Africa. 
+```
+
+```{r}
+unique(data$grow_up_country)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
