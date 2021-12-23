@@ -93,6 +93,8 @@ data <- data %>%
          )
 ```
 
+# Summary Statistics
+
 ```{r gender prop}
 data %>% 
   group_by(gender) %>%
@@ -140,19 +142,302 @@ data %>%
   group_by(grow_up_continent) %>% 
   tally() 
 
-# For 140 people grew up in one country, excludind 99 who grew up in Canada, 25 ppl grew up in Asia, 10 grew up in America, 5 in Europe, amd one in Africa. 
+# For 140 people grew up in one country, excluding 99 who grew up in Canada, 25 ppl grew up in Asia, 10 grew up in America, 5 in Europe, amd one in Africa. 
 ```
+
+```{r Num of Language}
+data %>% 
+  group_by(num_of_language) %>%
+  tally() %>% 
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '>5')) %>% 
+  arrange(desc(n))
+```
+
+```{r year of studying french}
+data <- data %>%  mutate(year_of_french = replace(year_of_french, year_of_french == '18 ans', '18')) 
+data$year_of_french
+
+data %>% 
+  mutate(year_of_french = as.numeric(year_of_french)) %>% 
+  mutate(year_group = case_when(year_of_french <= 5 ~ "0 - 5",
+                                year_of_french > 5 & year_of_french <= 10 ~ "5 - 10",
+                                year_of_french > 10 & year_of_french <= 15 ~"10 - 15",
+                                year_of_french > 15 ~ "> 15")) %>%
+  group_by(year_group) %>%
+  tally() %>% 
+  drop_na()
+
+
+```
+
+# Make long-format data
 
 ```{r}
-unique(data$grow_up_country)
+#names(data)
+
+rec_data <- data %>% 
+  select(c(2, 8, 10, 15, 23:132, 134)) %>% 
+  select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`)) %>% 
+  mutate(multi_grow_up = ifelse(str_detect(grow_up_country, "and|,"), TRUE, FALSE), 
+         grew_up_canada = ifelse(str_detect(grow_up_country, "Canada|canada"), TRUE, FALSE), 
+         study_year_group = case_when(year_of_french <= 5~"0 - 5",
+                                year_of_french > 5 & year_of_french <= 10 ~"5 - 10",
+                                year_of_french > 10 & year_of_french <= 15 ~"10 - 15",
+                                year_of_french > 15~"> 15"),
+         id = 1: nrow(data),
+         id = as.factor(id)) %>% 
+  relocate(id, .before = gender) %>% 
+  mutate(across(c(6:105), as.numeric)) 
+
+# reverse the scale for the question "strong accent? "
+accent_cols <- rec_data %>% 
+  select(contains('_4')) %>%
+  names
+
+rec_data[,accent_cols] = lapply(accent_cols,  function(x) 7 - rec_data[, x])
+
+# sum up the score
+rec_data <- rec_data %>% 
+   mutate(block_1 = rowSums(.[6:15]),
+         block_2 = rowSums(.[16:25]),
+         block_3 = rowSums(.[26:35]),
+         block_4 = rowSums(.[36:45]),
+         block_5 = rowSums(.[46:55]),
+         block_6 = rowSums(.[56:65]),
+         block_7 = rowSums(.[66:75]),
+         block_8 = rowSums(.[76:85]),
+         block_9 = rowSums(.[86:94]),
+         block_10 = rowSums(.[96:105]))
+
+
+
+recording_df_long <- rec_data %>% 
+  select(-c(6:105)) %>%
+  pivot_longer(cols = starts_with("block"), names_to = "block",values_to = "score")  %>%
+  mutate(speaker_race = case_when(block %in% c('block_1', 'block_4', 'block_7', 'block_8', 'block_9')~'white',
+                          block %in% c('block_2', 'block_3', 'block_5', 'block_6', 'block_10')~'black'),
+         speaker_accent = case_when(block %in% c('block_1', 'block_6')~'Quebec',
+                            block %in% c('block_2', 'block_9')~'European',
+                            block %in% c('block_3', 'block_8')~'Acadian',
+                            block %in% c('block_4', 'block_10')~'English',
+                            block %in% c('block_5', 'block_7')~'African')) 
 ```
 
 
+# Statistics Tests 
+
+```{r boxplot: gender vs. speaker accent}
+recording_df_long %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  ggplot(aes(y = score, x = speaker_accent, fill=gender)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Respondent Gender') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+```
+```{r wilcox test: gender vs. speaker accent}
+# for each accent
+recording_df_long %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(speaker_accent) %>% 
+  wilcox_test(score ~ gender, alternative = 'less', paired = FALSE)
+
+# no significant difference
+```
+
+
+```{r boxplot: gender vs. speaker race}
+recording_df_long %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=gender)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Race', y = 'Score',fill='Respsondent Gender') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+```
+
+```{r wilcox test: gender vs. speaker race}
+# for each accent
+recording_df_long %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(speaker_race) %>% 
+  wilcox_test(score ~ gender, paired = FALSE)
+```
+
+```{r boxplot: grew_up in Canada vs. Speaker Accent}
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_accent, fill=grew_up_canada)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Grew up in Canada') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+```
+
+```{r wilcox test: grew_up in Canada vs. Speaker Accent}
+# for each accent
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(speaker_accent) %>% 
+  wilcox_test(score ~ grew_up_canada, paired = FALSE)
+```
+
+```{r boxplot: multi grew up country vs. Speaker Accent}
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_accent, fill=multi_grow_up)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Grew up in More than One Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+
+```
+```{r wilcox test: multi grew up country vs. Speaker Accent (each & overall)}
+# for each accent
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(speaker_accent) %>% 
+  wilcox_test(score ~ multi_grow_up, paired = FALSE)
+
+# overall 
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  wilcox_test(score ~ multi_grow_up, paired = FALSE, alternative = 'less')
+```
+
+```{r boxplot: Grew up Continent/Country vs. Speaker Accent, fig.weight = 8, fig.height=4}
+continent_df <- recording_df_long %>% 
+  filter(multi_grow_up == FALSE) %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America (Canada exluded)',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa',
+                               grow_up_country == 'Canada' ~ 'Canada'
+                               ),
+         grow_up_continent = as.factor(grow_up_continent)) 
+
+
+continent_df %>% 
+  # remove Africa because there is only one respondent
+  filter(grow_up_continent != 'Africa') %>% 
+  ggplot(aes(y = score, x = speaker_accent, fill=grow_up_continent)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Grew up Continent/Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+  
+```
+
+```{r KW Test: Grew up Continent/Country vs. Speaker Accent}
+continent_df  %>%
+  group_by(speaker_accent) %>%
+  kruskal_test(score ~ grow_up_continent) 
+
+# post-hoc
+continent_df %>%
+  filter(speaker_accent == 'European') %>%
+  dunn_test(score ~ grow_up_continent, p.adjust.method = "bonferroni") 
+```
+
+```{r Boxplot: grew up vs. Speaker Race}
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=grew_up_canada)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Race', y = 'Score',fill='Grew up in Canada') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
 
 
 
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=multi_grow_up)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Race', y = 'Score',fill='Grew up in More than One Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
 
 
+continent_df %>% 
+  # remove Africa because there is only one respondent
+  filter(grow_up_continent != 'Africa') %>% 
+  ggplot(aes(y = score, x = speaker_race, fill=grow_up_continent)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Race', y = 'Score',fill='Grew up Continent/Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+```
+
+```{r wilcox test: grew_up in Canada vs. Speaker Accent}
+# for each speaker race
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(speaker_race) %>% 
+  wilcox_test(score ~ grew_up_canada, paired = FALSE)
+
+# neither significant 
+```
+
+```{r wilcox test: multiple grew_up vs. Speaker Accent}
+# for each speaker race
+# both significant 
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(speaker_race) %>% 
+  wilcox_test(score ~ multi_grow_up, paired = FALSE)
+
+# overall significant
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  wilcox_test(score ~ multi_grow_up, paired = FALSE)
+```
+```{r kW Test: grew up continent/place vs. speaker race}
+# for each speaker race
+# both significant 
+continent_df  %>%
+  group_by(speaker_race) %>%
+  kruskal_test(score ~ grow_up_continent) 
+
+# overall significant
+
+continent_df  %>%
+  kruskal_test(score ~ grow_up_continent) 
+```
 
 
 
