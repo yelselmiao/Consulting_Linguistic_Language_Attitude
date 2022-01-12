@@ -50,7 +50,7 @@ library(reshape2)
 
 library(ggpubr)
 library(rstatix)
-
+library(broom)
 ```
 
 
@@ -177,6 +177,7 @@ data %>%
 
 rec_data <- data %>% 
   select(c(2, 8, 10, 15, 23:132, 134)) %>% 
+  mutate(year_of_french = as.numeric(year_of_french)) %>%
   select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`)) %>% 
   mutate(multi_grow_up = ifelse(str_detect(grow_up_country, "and|,"), TRUE, FALSE), 
          grew_up_canada = ifelse(str_detect(grow_up_country, "Canada|canada"), TRUE, FALSE), 
@@ -403,7 +404,7 @@ continent_df %>%
         axis.text.x= element_text(size = 10, hjust = 0.5))  
 ```
 
-```{r wilcox test: grew_up in Canada vs. Speaker Accent}
+```{r wilcox test: grew_up in Canada vs. Speaker race}
 # for each speaker race
 recording_df_long %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
@@ -413,7 +414,7 @@ recording_df_long %>%
 # neither significant 
 ```
 
-```{r wilcox test: multiple grew_up vs. Speaker Accent}
+```{r wilcox test: multiple grew_up vs. Speaker race}
 # for each speaker race
 # both significant 
 recording_df_long %>%
@@ -426,7 +427,7 @@ recording_df_long %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   wilcox_test(score ~ multi_grow_up, paired = FALSE)
 ```
-```{r kW Test: grew up continent/place vs. speaker race}
+```{r KW Test: grew up continent/place vs. speaker race}
 # for each speaker race
 # both significant 
 continent_df  %>%
@@ -439,10 +440,131 @@ continent_df  %>%
   kruskal_test(score ~ grow_up_continent) 
 ```
 
+- # of languages spoken 
+
+```{r # of languages spoken: by accent}
+recording_df_long %>%
+  mutate(
+    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+    num_of_language = as.numeric(num_of_language)
+  ) %>%
+  ggplot(aes(x = num_of_language, y = score)) +
+  geom_point() +
+  geom_smooth(method = 'glm') +
+  facet_grid( ~ speaker_accent) +
+  theme_bw()
+  
+  
+mol_num_lang <- recording_df_long %>% 
+  mutate(
+    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+    num_of_language = as.numeric(num_of_language)
+  ) %>%
+  group_by(speaker_accent) %>% 
+  do(model = lm(score ~ num_of_language, data = .)) 
+
+  
+for (i in 1:5){
+  print(broom::tidy(mol_num_lang$model[[i]]))
+}  
+```
+
+```{r # of languages spoken: by race}
+recording_df_long %>%
+  mutate(
+    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+    num_of_language = as.numeric(num_of_language)
+  ) %>%
+  ggplot(aes(x = num_of_language, y = score)) +
+  geom_point() +
+  geom_smooth(method = 'glm') +
+  facet_grid( ~ speaker_race) +
+  theme_bw()
+  
+  
+mol_num_lang_race <- recording_df_long %>% 
+  mutate(
+    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+    num_of_language = as.numeric(num_of_language)
+  ) %>%
+  group_by(speaker_race) %>% 
+  do(model = lm(score ~ num_of_language, data = .)) 
+
+  
+for (i in 1:2){
+  print(broom::tidy(mol_num_lang_race$model[[i]]))
+}  
+```
 
 
 
 
+
+- # of years of studying French
+```{r # of years of studying French: by accent, fig.width=8, fig.height = 4}
+recording_df_long %>% 
+  group_by(speaker_accent) %>% 
+  mutate(year_of_french = as.numeric(year_of_french)) %>%
+  ggplot(aes(x = year_of_french, y = score)) + 
+  geom_point() + 
+  geom_smooth(method = 'glm') + 
+  facet_grid(~speaker_accent) + 
+  theme_bw()
+
+mols <- recording_df_long %>% 
+  mutate(year_of_french = as.numeric(year_of_french)) %>%
+  group_by(speaker_accent) %>% 
+  do(model = lm(score ~ year_of_french, data = .))
+
+for (i in 1:5){
+  print(broom::tidy(mols$model[[i]]))
+}
+
+
+mols_year_group <- recording_df_long %>% 
+  mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+                                study_year_group == "5 - 10"~2,
+                                study_year_group == "10 - 15"~3,
+                                study_year_group == "> 15"~4)) %>% 
+  group_by(speaker_accent) %>% 
+  do(model = lm(score ~ study_year_group_encoded, data = .))
+
+for (i in 1:5){
+  print(broom::tidy(mols_year_group$model[[i]]))
+}
+
+
+# recording_df_long %>% 
+#   group_by(speaker_accent) %>% 
+#   mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+#                                 study_year_group == "5 - 10"~2,
+#                                 study_year_group == "10 - 15"~3,
+#                                 study_year_group == "> 15"~4)) %>% 
+#   ggplot(aes(x = study_year_group_encoded, y = score)) + 
+#   geom_point() + 
+#   geom_smooth(method = 'glm') + 
+#   facet_grid(~speaker_accent) + 
+#   theme_bw()
+```
+
+```{r # of years of studying French: by race}
+mols_year_group_race <- recording_df_long %>% 
+  mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+                                study_year_group == "5 - 10"~2,
+                                study_year_group == "10 - 15"~3,
+                                study_year_group == "> 15"~4)) %>% 
+  group_by(speaker_race) %>% 
+  do(model = lm(score ~ study_year_group_encoded, data = .))
+
+for (i in 1:2){
+  print(broom::tidy(mols_year_group_race$model[[i]]))
+}
+```
+
+
+```{r}
+
+```
 
 
 
