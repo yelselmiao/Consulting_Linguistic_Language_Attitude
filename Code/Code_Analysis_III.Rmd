@@ -109,12 +109,14 @@ data %>%
 ```
 
 
-```{r Grow-up Country}
+```{r Grow-up Country: Canada or not}
 data %>% 
   filter(str_detect(grow_up_country, 'Canada')) %>% 
   group_by(grow_up_country) %>% 
   tally()
-# Out of 153 people who have answered this question, 99 people grew up in Canada, and another 9 people grew in both Canada and some other country. 
+# Out of 143 people who have answered this question, 99 people grew up in Canada, and another 9 people grew in both Canada and some other country. 
+
+
 
 
 data %>% 
@@ -154,7 +156,8 @@ data %>%
 ```
 
 ```{r year of studying french}
-data <- data %>%  mutate(year_of_french = replace(year_of_french, year_of_french == '18 ans', '18')) 
+data <- data %>%  mutate(year_of_french = replace(year_of_french, year_of_french == '18 ans', '18'),
+                         year_of_french = replace(year_of_french, year_of_french == '9 ans', '9')) 
 data$year_of_french
 
 data %>% 
@@ -165,7 +168,9 @@ data %>%
                                 year_of_french > 15 ~ "> 15")) %>%
   group_by(year_group) %>%
   tally() %>% 
-  drop_na()
+  drop_na() %>% 
+  mutate(per =`n`/sum(`n`),
+  label = paste0(n, ' (', scales::percent(per), ')'))
 
 
 ```
@@ -273,7 +278,25 @@ recording_df_long %>%
   wilcox_test(score ~ gender, paired = FALSE)
 ```
 
-```{r boxplot: grew_up in Canada vs. Speaker Accent}
+```{r lineplot & boxplot: grew_up in Canada vs. Speaker Accent}
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(grew_up_canada, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=grew_up_canada))+
+  geom_point() + 
+  geom_line(aes(group = grew_up_canada)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Grew up in Canada') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+
 recording_df_long %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   ggplot(aes(y = score, x = speaker_accent, fill=grew_up_canada)) +
@@ -285,6 +308,7 @@ recording_df_long %>%
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
         axis.text.x= element_text(size = 10, hjust = 0.5))  
+
 ```
 
 ```{r wilcox test: grew_up in Canada vs. Speaker Accent}
@@ -293,9 +317,32 @@ recording_df_long %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ grew_up_canada, paired = FALSE)
+
+
+recording_df_long %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  wilcox_test(score ~ grew_up_canada, paired = FALSE)
 ```
 
 ```{r boxplot: multi grew up country vs. Speaker Accent}
+recording_df_long %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(multi_grow_up, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=multi_grow_up))+
+  geom_point() + 
+  geom_line(aes(group = multi_grow_up)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Grew up in more than one country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+
 recording_df_long %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   ggplot(aes(y = score, x = speaker_accent, fill=multi_grow_up)) +
@@ -309,6 +356,9 @@ recording_df_long %>%
         axis.text.x= element_text(size = 10, hjust = 0.5))  
 
 ```
+
+
+
 ```{r wilcox test: multi grew up country vs. Speaker Accent (each & overall)}
 # for each accent
 recording_df_long %>%
@@ -322,32 +372,65 @@ recording_df_long %>%
   wilcox_test(score ~ multi_grow_up, paired = FALSE, alternative = 'less')
 ```
 
-```{r boxplot: Grew up Continent/Country vs. Speaker Accent, fig.weight = 8, fig.height=4}
+```{r boxplot: Grew up Continent/Country vs. Speaker Accent, fig.height=3, fig.width=6}
 continent_df <- recording_df_long %>% 
   filter(multi_grow_up == FALSE) %>% 
   mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
                                                       'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
                                                       'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
                                grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
-                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America (Canada exluded)',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
                                grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa',
                                grow_up_country == 'Canada' ~ 'Canada'
                                ),
          grow_up_continent = as.factor(grow_up_continent)) 
 
 
+# continent_df %>% 
+#   # remove Africa because there is only one respondent
+#   filter(grow_up_continent != 'Africa') %>% 
+#   ggplot(aes(y = score, x = speaker_accent, fill=grow_up_continent)) +
+#   geom_boxplot() + 
+#   theme_bw() + 
+#   labs(x = 'Speaker Accent', y = 'Score',fill='Grew up Continent/Country') + 
+#   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+#         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+#         strip.text = element_text(size=12),
+#         axis.text.y = element_text(size = 10),
+#         axis.text.x= element_text(size = 10, hjust = 0.5))  
+
+
 continent_df %>% 
   # remove Africa because there is only one respondent
   filter(grow_up_continent != 'Africa') %>% 
-  ggplot(aes(y = score, x = speaker_accent, fill=grow_up_continent)) +
+  ggplot(aes(y = score, x = grow_up_continent, fill=grow_up_continent)) +
   geom_boxplot() + 
+  facet_wrap(~speaker_accent) + 
   theme_bw() + 
   labs(x = 'Speaker Accent', y = 'Score',fill='Grew up Continent/Country') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x= element_text(size = 10, hjust = 0.5))  
+        axis.text.x= element_text(size = 10, hjust = 0.5))
+
+
+continent_df %>% 
+  # remove Africa because there is only one respondent
+  filter(grow_up_continent != 'Africa') %>% 
+  group_by(grow_up_continent, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=grow_up_continent))+
+  geom_point() + 
+  geom_line(aes(group = grow_up_continent)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Grew up Continent/Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
   
 ```
 
@@ -357,6 +440,12 @@ continent_df  %>%
   kruskal_test(score ~ grow_up_continent) 
 
 # post-hoc
+
+continent_df %>%
+  filter(speaker_accent == 'Acadian') %>%
+  dunn_test(score ~ grow_up_continent, p.adjust.method = "bonferroni") 
+
+
 continent_df %>%
   filter(speaker_accent == 'European') %>%
   dunn_test(score ~ grow_up_continent, p.adjust.method = "bonferroni") 
@@ -448,7 +537,7 @@ recording_df_long %>%
     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
     num_of_language = as.numeric(num_of_language)
   ) %>%
-  ggplot(aes(x = num_of_language, y = score)) +
+  ggplot(aes(x = num_of_language, y = log(score))) +
   geom_point() +
   geom_smooth(method = 'glm') +
   facet_grid( ~ speaker_accent) +
