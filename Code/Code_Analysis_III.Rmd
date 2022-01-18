@@ -150,9 +150,12 @@ data %>%
 ```{r Num of Language}
 data %>% 
   group_by(num_of_language) %>%
-  tally() %>% 
-  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '>5')) %>% 
-  arrange(desc(n))
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '>5'),
+         num_of_language = replace(num_of_language, num_of_language == '1', '2')) %>% 
+  tally() %>%
+  arrange(desc(n)) %>% 
+  mutate(per =`n`/sum(`n`),
+  label = paste0(n, ' (', scales::percent(per), ')'))
 ```
 
 ```{r year of studying french}
@@ -177,7 +180,7 @@ data %>%
 
 # Make long-format data
 
-```{r}
+```{r make long data}
 #names(data)
 
 rec_data <- data %>% 
@@ -227,13 +230,53 @@ recording_df_long <- rec_data %>%
                             block %in% c('block_3', 'block_8')~'Acadian',
                             block %in% c('block_4', 'block_10')~'English',
                             block %in% c('block_5', 'block_7')~'African')) 
+
+
+# replace English accent as 
+recording_df_long <- recording_df_long %>% 
+  mutate(speaker_accent = replace(speaker_accent, speaker_accent == 'English', 'L2 French'))
 ```
+
+```{r long data for speaker accent}
+rec_long_accent <- recording_df_long %>% 
+  # dplyr::select(id,speaker_accent, speaker_race, block, score) %>% 
+  group_by(id, speaker_accent) %>%
+  summarise(score = sum(score, na.rm = TRUE)) %>% 
+  left_join(rec_data, on = 'id')
+```
+
+
+```{r long data for speaker race}
+rec_long_race <- recording_df_long %>% 
+  # dplyr::select(id,speaker_accent, speaker_race, block, score) %>% 
+  group_by(id, speaker_race) %>%
+  summarise(score = sum(score, na.rm = TRUE)) %>% 
+  left_join(rec_data, on = 'id')
+```
+
 
 
 # Statistics Tests 
 
-```{r boxplot: gender vs. speaker accent}
-recording_df_long %>%
+```{r boxplot & line plot: gender vs. speaker accent}
+rec_long_accent %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(gender, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=gender))+
+  geom_point() + 
+  geom_line(aes(group = gender)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Gender') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+rec_long_accent %>%
   filter(gender %in% c('Woman', 'Man')) %>%
   ggplot(aes(y = score, x = speaker_accent, fill=gender)) +
   geom_boxplot() + 
@@ -245,9 +288,12 @@ recording_df_long %>%
         axis.text.y = element_text(size = 10),
         axis.text.x= element_text(size = 10, hjust = 0.5))  
 ```
+
+
+
 ```{r wilcox test: gender vs. speaker accent}
 # for each accent
-recording_df_long %>%
+rec_long_accent %>%
   filter(gender %in% c('Woman', 'Man')) %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ gender, alternative = 'less', paired = FALSE)
@@ -256,30 +302,10 @@ recording_df_long %>%
 ```
 
 
-```{r boxplot: gender vs. speaker race}
-recording_df_long %>%
-  filter(gender %in% c('Woman', 'Man')) %>%
-  ggplot(aes(y = score, x = speaker_race, fill=gender)) +
-  geom_boxplot() + 
-  theme_bw() + 
-  labs(x = 'Speaker Race', y = 'Score',fill='Respsondent Gender') + 
-  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
-        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
-        strip.text = element_text(size=12),
-        axis.text.y = element_text(size = 10),
-        axis.text.x= element_text(size = 10, hjust = 0.5))  
-```
 
-```{r wilcox test: gender vs. speaker race}
-# for each accent
-recording_df_long %>%
-  filter(gender %in% c('Woman', 'Man')) %>%
-  group_by(speaker_race) %>% 
-  wilcox_test(score ~ gender, paired = FALSE)
-```
 
 ```{r lineplot & boxplot: grew_up in Canada vs. Speaker Accent}
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   group_by(grew_up_canada, speaker_accent) %>%
   summarise(mu = mean(score, na.rm = TRUE)) %>% 
@@ -297,7 +323,7 @@ recording_df_long %>%
 
 
 
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   ggplot(aes(y = score, x = speaker_accent, fill=grew_up_canada)) +
   geom_boxplot() + 
@@ -313,19 +339,19 @@ recording_df_long %>%
 
 ```{r wilcox test: grew_up in Canada vs. Speaker Accent}
 # for each accent
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ grew_up_canada, paired = FALSE)
 
 
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   wilcox_test(score ~ grew_up_canada, paired = FALSE)
 ```
 
 ```{r boxplot: multi grew up country vs. Speaker Accent}
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   group_by(multi_grow_up, speaker_accent) %>%
   summarise(mu = mean(score, na.rm = TRUE)) %>% 
@@ -343,7 +369,7 @@ recording_df_long %>%
 
 
 
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   ggplot(aes(y = score, x = speaker_accent, fill=multi_grow_up)) +
   geom_boxplot() + 
@@ -361,19 +387,14 @@ recording_df_long %>%
 
 ```{r wilcox test: multi grew up country vs. Speaker Accent (each & overall)}
 # for each accent
-recording_df_long %>%
+rec_long_accent %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ multi_grow_up, paired = FALSE)
-
-# overall 
-recording_df_long %>%
-  filter(is.na(multi_grow_up) == FALSE) %>%
-  wilcox_test(score ~ multi_grow_up, paired = FALSE, alternative = 'less')
 ```
 
 ```{r boxplot: Grew up Continent/Country vs. Speaker Accent, fig.height=3, fig.width=6}
-continent_df <- recording_df_long %>% 
+continent_df <- rec_long_accent %>% 
   filter(multi_grow_up == FALSE) %>% 
   mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
                                                       'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
@@ -441,14 +462,161 @@ continent_df  %>%
 
 # post-hoc
 
-continent_df %>%
-  filter(speaker_accent == 'Acadian') %>%
-  dunn_test(score ~ grow_up_continent, p.adjust.method = "bonferroni") 
+dunnTest(score ~ grow_up_continent, data = European, method = 'holm')
+dunn.test(European$score, European$grow_up_continent, method = 'holm')
+```
 
 
-continent_df %>%
-  filter(speaker_accent == 'European') %>%
-  dunn_test(score ~ grow_up_continent, p.adjust.method = "bonferroni") 
+
+- # of languages spoken 
+
+```{r # of languages spoken: by accent}
+# 
+# num_of_lan_df <- recording_df_long %>%
+#   mutate(num_of_language = replace(num_of_language, num_of_language == '1', '2'))
+# 
+# # correlation analysis 
+# num_of_lan_df %>% 
+#   group_by(speaker_accent) %>%
+#   fileter(is.na(num_of_language) == FALSE) %>%
+#   summarise(spear_cor = cor.test(score, num_of_language))
+# 
+# 
+# recording_df_long %>%
+#   mutate(
+#     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+#     num_of_language = replace(num_of_language, num_of_language == '1', '2'),
+#     num_of_language = as.numeric(num_of_language)
+#   ) %>%
+#   ggplot(aes(x = num_of_language, y = log(score))) +
+#   geom_point() +
+#   geom_smooth(method = 'glm') +
+#   facet_grid( ~ speaker_accent) +
+#   theme_bw()
+#   
+# # treat num_of_language as numeric  
+# mol_num_lang_1 <- recording_df_long %>% 
+#   mutate(
+#     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+#     num_of_language = replace(num_of_language, num_of_language == '1', '2'),
+#     num_of_language = as.numeric(num_of_language)
+#   ) %>%
+#   group_by(speaker_accent) %>% 
+#   do(model = lm(score ~ num_of_language, data = .)) 
+# 
+#   
+# for (i in 1:5){
+#   print(broom::tidy(mol_num_lang_1$model[[i]]))
+# }  
+# 
+# 
+# # treat num_of_language as categorical   
+# mol_num_lang_2 <- recording_df_long %>% 
+#   group_by(speaker_accent) %>% 
+#   do(model = lm(score ~ num_of_language, data = .)) 
+# 
+#   
+# for (i in 1:5){
+#   print(broom::tidy(mol_num_lang_2$model[[i]]))
+# }  
+# 
+# 
+# # KW Test 
+# recording_df_long %>% 
+#   group_by(speaker_accent) %>% 
+#   kruskal_test(score ~ num_of_language) 
+
+```
+
+```{r corr: # of language vs. speaker accent}
+num_of_lan_df <- rec_long_accent %>% 
+  dplyr::select(speaker_accent, score, num_of_language) %>%
+  #filter(speaker_accent == 'Quebec') %>%
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5')) %>% 
+  drop_na()
+
+
+# treat num_of_language as rank
+ num_of_lan_df %>% 
+   mutate(num_of_language = as.numeric(num_of_language)) %>% 
+   group_by(speaker_accent) %>% 
+   summarise(spear_cor = round(cor(score, num_of_language, method = 'spearman'),3),
+             spear_p_value = round(cor.test(score, num_of_language, method = 'spearman', exact = FALSE)$p.value,3))
+  
+
+```
+
+
+
+
+
+
+
+
+
+- # of years of studying French
+```{r cor: year of french vs. accent}
+
+# correlation analysis
+rec_long_accent %>%
+  mutate(year_of_french = as.numeric(year_of_french)) %>% 
+  group_by(speaker_accent) %>% 
+  summarise(pearson_cor = round(cor.test(year_of_french, score, method = 'pearson', exact = FALSE)$estimate,3),
+            pearson_p = round(cor.test(year_of_french, score, method = 'pearson', exact = FALSE)$p.value,3),
+            )
+
+
+rec_long_accent %>% 
+  mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+                                study_year_group == "5 - 10"~2,
+                                study_year_group == "10 - 15"~3,
+                                study_year_group == "> 15"~4)) %>% 
+  group_by(speaker_accent) %>% 
+  summarise(spearman_cor = round(cor.test(study_year_group_encoded, score, method = 'spearman', exact = FALSE)$estimate,3),
+            spearman_p = round(cor.test(study_year_group_encoded, score, method = 'spearman', exact = FALSE)$p.value,3),
+            kendall_cor = round(cor.test(study_year_group_encoded, score, method = 'kendall', exact = FALSE)$estimate,3),
+            kendall_p = round(cor.test(study_year_group_encoded, score, method = 'kendall', exact = FALSE)$p.value,3))
+          
+```
+
+
+
+
+
+## Effect of speaker race
+
+```{r boxplot: gender vs. speaker race}
+rec_long_race %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=gender)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Race', y = 'Score',fill='Respsondent Gender') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5))  
+```
+
+
+
+
+```{r wilcox test: gender vs. speaker race}
+# for each race
+rec_long_race %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(speaker_race) %>% 
+  wilcox_test(score ~ gender, paired = FALSE)
+
+
+
+
+
+rec_long_race %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(gender) %>% 
+  wilcox_test(score ~ speaker_race, paired = FALSE)
 ```
 
 ```{r Boxplot: grew up vs. Speaker Race}
@@ -493,72 +661,113 @@ continent_df %>%
         axis.text.x= element_text(size = 10, hjust = 0.5))  
 ```
 
+
+
+
+
 ```{r wilcox test: grew_up in Canada vs. Speaker race}
 # for each speaker race
-recording_df_long %>%
+# neither significant 
+rec_long_race %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   group_by(speaker_race) %>% 
   wilcox_test(score ~ grew_up_canada, paired = FALSE)
 
-# neither significant 
+
+
+rec_long_race %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(grew_up_canada) %>% 
+  wilcox_test(score ~ speaker_race, paired = FALSE)
 ```
 
 ```{r wilcox test: multiple grew_up vs. Speaker race}
 # for each speaker race
 # both significant 
-recording_df_long %>%
+rec_long_race %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   group_by(speaker_race) %>% 
   wilcox_test(score ~ multi_grow_up, paired = FALSE)
 
-# overall significant
-recording_df_long %>%
+rec_long_race %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
-  wilcox_test(score ~ multi_grow_up, paired = FALSE)
+  group_by(multi_grow_up) %>% 
+  wilcox_test(score ~ speaker_race, paired = FALSE)
+
 ```
+
 ```{r KW Test: grew up continent/place vs. speaker race}
+continent_df_race <- rec_long_race %>% 
+  filter(multi_grow_up == FALSE) %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa',
+                               grow_up_country == 'Canada' ~ 'Canada'
+                               ),
+         grow_up_continent = as.factor(grow_up_continent)) 
+
 # for each speaker race
 # both significant 
-continent_df  %>%
+continent_df_race  %>%
   group_by(speaker_race) %>%
   kruskal_test(score ~ grow_up_continent) 
 
-# overall significant
-
-continent_df  %>%
-  kruskal_test(score ~ grow_up_continent) 
+continent_df_race  %>%
+  group_by(grow_up_continent) %>%
+  kruskal_test(score ~ speaker_race) 
 ```
 
-- # of languages spoken 
+```{r cor: num of language vs. race}
+num_of_lan_df_race <- rec_long_race %>% 
+  dplyr::select(speaker_race, score, num_of_language) %>%
+  #filter(speaker_accent == 'Quebec') %>%
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5')) %>% 
+  drop_na()
 
-```{r # of languages spoken: by accent}
-recording_df_long %>%
-  mutate(
-    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
-    num_of_language = as.numeric(num_of_language)
-  ) %>%
-  ggplot(aes(x = num_of_language, y = log(score))) +
-  geom_point() +
-  geom_smooth(method = 'glm') +
-  facet_grid( ~ speaker_accent) +
-  theme_bw()
-  
-  
-mol_num_lang <- recording_df_long %>% 
-  mutate(
-    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
-    num_of_language = as.numeric(num_of_language)
-  ) %>%
-  group_by(speaker_accent) %>% 
-  do(model = lm(score ~ num_of_language, data = .)) 
 
-  
-for (i in 1:5){
-  print(broom::tidy(mol_num_lang$model[[i]]))
-}  
+# treat num_of_language as rank
+ num_of_lan_df_race %>% 
+   mutate(num_of_language = as.numeric(num_of_language)) %>% 
+   group_by(speaker_race) %>% 
+   summarise(spear_cor = round(cor(score, num_of_language, method = 'spearman'),3),
+             spear_p_value = round(cor.test(score, num_of_language, method = 'spearman', exact = FALSE)$p.value,3))
+ 
+
 ```
 
-```{r # of languages spoken: by race}
+```{r cor: year of French vs. race}
+# year of French
+ rec_long_race %>% 
+   mutate(year_of_french = as.numeric(year_of_french)) %>% 
+   filter(is.na(year_of_french) == FALSE) %>%
+   group_by(speaker_race) %>% 
+   summarise(pearson_cor = round(cor(score, year_of_french, method = 'pearson'),3),
+             pearson_p_value = round(cor.test(score, year_of_french, method = 'pearson', exact = FALSE)$p.value,3))
+
+
+# year of French by five-year
+
+
+rec_long_race %>% 
+  mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+                                study_year_group == "5 - 10"~2,
+                                study_year_group == "10 - 15"~3,
+                                study_year_group == "> 15"~4)) %>% 
+  group_by(speaker_race) %>% 
+  summarise(spearman_cor = round(cor.test(study_year_group_encoded, score, method = 'spearman', exact = FALSE)$estimate,3),
+            spearman_p = round(cor.test(study_year_group_encoded, score, method = 'spearman', exact = FALSE)$p.value,3),
+            kendall_cor = round(cor.test(study_year_group_encoded, score, method = 'kendall', exact = FALSE)$estimate,3),
+            kendall_p = round(cor.test(study_year_group_encoded, score, method = 'kendall', exact = FALSE)$p.value,3))
+```
+
+
+
+
+
+```{r # of languages spoken: by race (model)}
 recording_df_long %>%
   mutate(
     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
@@ -587,40 +796,52 @@ for (i in 1:2){
 
 
 
-
-
-- # of years of studying French
-```{r # of years of studying French: by accent, fig.width=8, fig.height = 4}
-recording_df_long %>% 
-  group_by(speaker_accent) %>% 
-  mutate(year_of_french = as.numeric(year_of_french)) %>%
-  ggplot(aes(x = year_of_french, y = score)) + 
-  geom_point() + 
-  geom_smooth(method = 'glm') + 
-  facet_grid(~speaker_accent) + 
-  theme_bw()
-
-mols <- recording_df_long %>% 
-  mutate(year_of_french = as.numeric(year_of_french)) %>%
-  group_by(speaker_accent) %>% 
-  do(model = lm(score ~ year_of_french, data = .))
-
-for (i in 1:5){
-  print(broom::tidy(mols$model[[i]]))
-}
-
-
-mols_year_group <- recording_df_long %>% 
+```{r # of years of studying French: by race (model)}
+mols_year_group_race <- recording_df_long %>% 
   mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
                                 study_year_group == "5 - 10"~2,
                                 study_year_group == "10 - 15"~3,
                                 study_year_group == "> 15"~4)) %>% 
-  group_by(speaker_accent) %>% 
+  group_by(speaker_race) %>% 
   do(model = lm(score ~ study_year_group_encoded, data = .))
 
-for (i in 1:5){
-  print(broom::tidy(mols_year_group$model[[i]]))
+for (i in 1:2){
+  print(broom::tidy(mols_year_group_race$model[[i]]))
 }
+```
+
+
+```{r # of years of studying French: by accent, fig.width=8, fig.height = 4; model}
+# recording_df_long %>% 
+#   group_by(speaker_accent) %>% 
+#   mutate(year_of_french = as.numeric(year_of_french)) %>%
+#   ggplot(aes(x = year_of_french, y = score)) + 
+#   geom_point() + 
+#   geom_smooth(method = 'glm') + 
+#   facet_grid(~speaker_accent) + 
+#   theme_bw()
+# 
+# mols <- recording_df_long %>% 
+#   mutate(year_of_french = as.numeric(year_of_french)) %>%
+#   group_by(speaker_accent) %>% 
+#   do(model = lm(score ~ year_of_french, data = .))
+# 
+# for (i in 1:5){
+#   print(broom::tidy(mols$model[[i]]))
+# }
+# 
+# 
+# mols_year_group <- recording_df_long %>% 
+#   mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
+#                                 study_year_group == "5 - 10"~2,
+#                                 study_year_group == "10 - 15"~3,
+#                                 study_year_group == "> 15"~4)) %>% 
+#   group_by(speaker_accent) %>% 
+#   do(model = lm(score ~ study_year_group_encoded, data = .))
+# 
+# for (i in 1:5){
+#   print(broom::tidy(mols_year_group$model[[i]]))
+# }
 
 
 # recording_df_long %>% 
@@ -636,42 +857,306 @@ for (i in 1:5){
 #   theme_bw()
 ```
 
-```{r # of years of studying French: by race}
-mols_year_group_race <- recording_df_long %>% 
-  mutate(study_year_group_encoded = case_when(study_year_group == "0 - 5"~1,
-                                study_year_group == "5 - 10"~2,
-                                study_year_group == "10 - 15"~3,
-                                study_year_group == "> 15"~4)) %>% 
-  group_by(speaker_race) %>% 
-  do(model = lm(score ~ study_year_group_encoded, data = .))
-
-for (i in 1:2){
-  print(broom::tidy(mols_year_group_race$model[[i]]))
-}
-```
-
 
 ```{r}
-
+rec_long_race %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(gender) %>% 
+  wilcox_test(score ~ speaker_race)
 ```
 
 
 
 
+```{r comparsion within group, message=FALSE, warning=FALSE}
+# gender 
+bind_cols(
+rec_long_race %>% 
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(gender, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(gender %in% c('Woman', 'Man')) %>%
+  group_by(gender) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+
+##################################################################  Grow up in Canada & multi grow up
+
+# Grow up in Canada 
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(grew_up_canada, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(grew_up_canada) == FALSE) %>%
+  group_by(grew_up_canada) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
 
 
 
+# grow up in more than one country
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(multi_grow_up, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(multi_grow_up) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+
+################################################################# country/continent growing up
+continent_df_race <- rec_long_race %>% 
+  filter(multi_grow_up == FALSE) %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa',
+                               grow_up_country == 'Canada' ~ 'Canada'
+                               ),
+         grow_up_continent = as.factor(grow_up_continent)) 
+
+
+# country/continent growing up
+
+bind_cols(
+continent_df_race %>% 
+  #filter(is.na() == FALSE) %>%
+  group_by(grow_up_continent, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+continent_df_race %>%
+  #filter(is.na(multi_grow_up) == FALSE) %>%
+  group_by(grow_up_continent) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
 
 
 
+```
+
+
+## Analysis of respsondent race 
+
+1) White (34) vs non-White (59)  
+
+2) White (34), Chinese (22), and others (37).   
+
+
+```{r update the long dataset}
+# take a glace at races of respondents 
+(race_info <- data %>% 
+  dplyr::select(race) %>% 
+  #filter(is.na(race) == FALSE) %>%
+  group_by(race) %>% 
+  tally()) %>% 
+  arrange(desc(n))
+
+
+# update the long format data
+rec_long_accent <- rec_long_accent %>% 
+  dplyr::select(-(contains("A_") | contains("block_"))) %>% 
+  mutate(white_or_not = ifelse(is.na(race), NA, ifelse(race == '1. White', 'white', 'non-white')),
+         race_group =  ifelse(is.na(race), NA, ifelse(race == '1. White', 'white', ifelse(race == '4. Chinese', 'Chinese', 'Others'))))
+
+
+rec_long_race <- rec_long_race %>% 
+  dplyr::select(-(contains("A_") | contains("block_"))) %>% 
+  mutate(white_or_not = ifelse(is.na(race), NA, ifelse(race == '1. White', 'white', 'non-white')),
+         race_group =  ifelse(is.na(race), NA, ifelse(race == '1. White', 'white', ifelse(race == '4. Chinese', 'Chinese', 'Others'))))
+```
+
+### Accent 
+
+```{r viz: speaker accent vs. respondent white/non-white}
+rec_long_accent %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(white_or_not, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=white_or_not))+
+  geom_point() + 
+  geom_line(aes(group = white_or_not)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
 
 
 
+rec_long_accent %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_accent, fill=white_or_not)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5)) 
+
+
+```
+
+```{r wilcox: speaker accent vs. respondent white/non-white}
+# for each accent
+rec_long_accent %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(speaker_accent) %>% 
+  wilcox_test(score ~ white_or_not)
+```
+
+
+```{r viz: speaker accent vs. respondent race group}
+rec_long_accent %>%
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(race_group, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=race_group))+
+  geom_point() + 
+  geom_line(aes(group = race_group)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
 
 
 
+rec_long_accent %>%
+  filter(is.na(race_group) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_accent, fill=race_group)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Speaker Accent', y = 'Score',fill='Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5)) 
 
 
+```
+```{r KW: speaker accent vs. respondent race group}
+# for each accent
+rec_long_accent %>%
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(speaker_accent) %>% 
+  kruskal_test(score ~ race_group)
+```
+
+
+### Race 
+
+```{r boxplot: speaker race vs. respondent white/non-white}
+rec_long_race %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=white_or_not)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Race of Speakers', y = 'Score',fill='Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5)) 
+```
+
+```{r tests: speaker race vs. respondent white/non-white}
+# for each accent
+rec_long_race %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(speaker_race) %>% 
+  wilcox_test(score ~ white_or_not)
+
+# two races 
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(white_or_not, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(white_or_not) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+```
+
+```{r boxplot: speaker race vs. respondent race group}
+rec_long_race %>%
+  filter(is.na(race_group) == FALSE) %>%
+  ggplot(aes(y = score, x = speaker_race, fill=race_group)) +
+  geom_boxplot() + 
+  theme_bw() + 
+  labs(x = 'Race of Speakers', y = 'Score',fill='Race of Respondents') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x= element_text(size = 10, hjust = 0.5)) 
+```
+
+```{r tests: speaker race vs. respondent white/non-white}
+# for each accent
+rec_long_race %>%
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(speaker_race) %>% 
+  kruskal_test(score ~ race_group)
+
+# two races 
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(race_group, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(race_group) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+```
 
 
 
