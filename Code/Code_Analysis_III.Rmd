@@ -1142,6 +1142,44 @@ rec_long_race %>%
   dplyr::select(statistic, p))
 ```
 
+```{r}
+# white or not white
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(white_or_not, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(white_or_not) == FALSE) %>%
+  group_by(white_or_not) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+
+
+########################################### race group
+bind_cols(
+rec_long_race %>% 
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(race_group, speaker_race) %>%
+  summarise(race_mean = mean(score)) %>%
+  mutate_at(vars(race_mean), funs(round(., 2))) %>%
+  tidyr::pivot_wider(names_from = speaker_race, values_from = race_mean),
+
+rec_long_race %>%
+  filter(is.na(race_group) == FALSE) %>%
+  group_by(race_group) %>%
+  wilcox_test(score ~ speaker_race) %>%
+  mutate_at(vars(p), funs(round(., 3))) %>% 
+  mutate_at(vars(statistic), funs(round(., 1))) %>% 
+  dplyr::select(statistic, p))
+
+
+```
 
 
 
