@@ -54,7 +54,7 @@ library(broom)
 ```
 
 
-```{r}
+```{r load data}
 #Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi <- read_excel("Data/Les différents accents du français - November 1 2021 - ENG for Shuyi.xlsx")
 
 raw_data <- Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi
@@ -64,7 +64,7 @@ data <- raw_data[-1, ]
 names(data)
 ```
 
-```{r}
+```{r rename columns}
 data <- data %>%
   select(-c(Q43...144, ...147, QID18_1, QID18_2, QID18_3, QID18_4,
             QID18_5, QID18_6, QID18_7, QID18_8, QID18_9, QID18_10, QID19)) %>%
@@ -256,7 +256,7 @@ rec_long_race <- recording_df_long %>%
 
 
 
-# Statistics Tests 
+# Viz & Statistics Tests 
 
 ```{r boxplot & line plot: gender vs. speaker accent}
 rec_long_accent %>%
@@ -344,10 +344,9 @@ rec_long_accent %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ grew_up_canada, paired = FALSE)
 
-
-rec_long_accent %>%
-  filter(is.na(grew_up_canada) == FALSE) %>%
-  wilcox_test(score ~ grew_up_canada, paired = FALSE)
+# rec_long_accent %>%
+#   filter(is.na(grew_up_canada) == FALSE) %>%
+#   wilcox_test(score ~ grew_up_canada, paired = FALSE)
 ```
 
 ```{r boxplot: multi grew up country vs. Speaker Accent}
@@ -461,70 +460,37 @@ continent_df  %>%
   kruskal_test(score ~ grow_up_continent) 
 
 # post-hoc
-
-dunnTest(score ~ grow_up_continent, data = European, method = 'holm')
-dunn.test(European$score, European$grow_up_continent, method = 'holm')
+European <- continent_df %>% filter(speaker_accent == 'European')
+FSA::dunnTest(score ~ grow_up_continent, data = European, method = 'holm')
+#dunn.test(European$score, European$grow_up_continent, method = 'holm')
 ```
 
 
 
 - # of languages spoken 
 
-```{r # of languages spoken: by accent}
-# 
-# num_of_lan_df <- recording_df_long %>%
-#   mutate(num_of_language = replace(num_of_language, num_of_language == '1', '2'))
-# 
-# # correlation analysis 
-# num_of_lan_df %>% 
-#   group_by(speaker_accent) %>%
-#   fileter(is.na(num_of_language) == FALSE) %>%
-#   summarise(spear_cor = cor.test(score, num_of_language))
-# 
-# 
-# recording_df_long %>%
-#   mutate(
-#     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
-#     num_of_language = replace(num_of_language, num_of_language == '1', '2'),
-#     num_of_language = as.numeric(num_of_language)
-#   ) %>%
-#   ggplot(aes(x = num_of_language, y = log(score))) +
-#   geom_point() +
-#   geom_smooth(method = 'glm') +
-#   facet_grid( ~ speaker_accent) +
-#   theme_bw()
-#   
-# # treat num_of_language as numeric  
-# mol_num_lang_1 <- recording_df_long %>% 
-#   mutate(
-#     num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
-#     num_of_language = replace(num_of_language, num_of_language == '1', '2'),
-#     num_of_language = as.numeric(num_of_language)
-#   ) %>%
-#   group_by(speaker_accent) %>% 
-#   do(model = lm(score ~ num_of_language, data = .)) 
-# 
-#   
-# for (i in 1:5){
-#   print(broom::tidy(mol_num_lang_1$model[[i]]))
-# }  
-# 
-# 
-# # treat num_of_language as categorical   
-# mol_num_lang_2 <- recording_df_long %>% 
-#   group_by(speaker_accent) %>% 
-#   do(model = lm(score ~ num_of_language, data = .)) 
-# 
-#   
-# for (i in 1:5){
-#   print(broom::tidy(mol_num_lang_2$model[[i]]))
-# }  
-# 
-# 
-# # KW Test 
-# recording_df_long %>% 
-#   group_by(speaker_accent) %>% 
-#   kruskal_test(score ~ num_of_language) 
+```{r viz: # of languages spoken: by accent,fig.height = 3, fig.width = 6}
+
+recording_df_long %>%
+  mutate(
+    num_of_language = replace(num_of_language, num_of_language == '+ de 5', '5'),
+    num_of_language = replace(num_of_language, num_of_language == '1', '2'),
+    num_of_language_numeric = as.numeric(num_of_language)
+  ) %>%
+  ggplot(aes(x = num_of_language_numeric, y = score)) +
+  geom_jitter() +
+  scale_x_continuous(breaks = seq(0, 5, by = 1)) + 
+  geom_smooth(method = lm) +
+  facet_grid( ~ speaker_accent) +
+  theme_bw() + 
+  labs(x = 'Number of Language Spoken', y = 'Score') + 
+  scale_colour_discrete('Number of Language Spoken') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
 
 ```
 
@@ -550,11 +516,29 @@ num_of_lan_df <- rec_long_accent %>%
 
 
 
-
-
-
-
 - # of years of studying French
+
+```{r viz: year of french: by accent,fig.height = 3, fig.width = 6}
+rec_long_accent %>%
+  mutate(year_of_french = as.numeric(year_of_french)) %>% 
+  ggplot(aes(x = year_of_french, y = score)) +
+  geom_jitter() +
+  geom_smooth(method = 'glm') +
+  facet_grid( ~ speaker_accent) +
+  theme_bw() + 
+  labs(x = 'Year of Learning French', y = 'Score') + 
+  scale_colour_discrete('Grew up Continent/Country') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+```
+
+
+
+
+
 ```{r cor: year of french vs. accent}
 
 # correlation analysis
