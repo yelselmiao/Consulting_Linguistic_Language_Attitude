@@ -852,7 +852,7 @@ res_tbl_dt
 3) Would the person who did the recording be a good French teacher at UBC?
 4) The speaker has a strong accent.
 
-```{r Understandability}
+```{r Understandlity}
 # reverse the scale of question (4): The speaker has a strong accent.
 accent_cols = recording_temp %>% 
   select(contains('_4')) %>%
@@ -1747,7 +1747,17 @@ race_res
 
 
 ```{r Paired Two-sample Test on Race}
-
+continent_df_race <- rec_long_race %>% 
+  filter(multi_grow_up == FALSE) %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa',
+                               grow_up_country == 'Canada' ~ 'Canada'
+                               ),
+         grow_up_continent = as.factor(grow_up_continent)) 
 bind_cols(
 recording_df_long %>% 
   group_by(continent, race) %>%
