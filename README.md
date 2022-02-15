@@ -1,11 +1,13 @@
 # _STCS Consulting_
-## Language Attitude towards Difference French Accents
+## TOPIC: Language Attitude towards Difference French Accents
+
+Affilication: [Applied Statistics and Data Science Group](https://asda.stat.ubc.ca) and [STCS](https://www.stat.ubc.ca/~stcs/) 
 
 **Consultant**: Shuyi Tan  
 **Client**: Dr. Marie-Eve Bouchard
 
 This consulting project consists of three sub-projects: 
-### 1. Evaluation of language attitudes towards speakers of race and accent 
+### 1. Evaluation of language attitudes towards speakers of different race and accent 
 The lanaguage attitudes were assessed in four aspects:   
    - General Perspetives  
    - Solitary Dimensions 
