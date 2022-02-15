@@ -12,7 +12,7 @@ The lanaguage attitudes were assessed in four aspects:
    - Status Traits  
    - Understandability   
 
-Statistical Methods:  
+`Statistical Methods`  
   - Exploratory Data Analysis  
   - Repeated Measures ANOVA
   - Two-way ANOVA 
@@ -29,7 +29,7 @@ Respondents' sociodemographic information being analyzed:
 - Preferred French Accent  
 - Preception of Beautiful French  
 
-Statistical Methods:  
+`Statistical Methods`    
 - Exploratory Data Analysis  
 - Wilcoxon Signed Rank test  
 - KruskalWallis test (post-hoc: Dunn’s Test) 
@@ -42,7 +42,7 @@ Respondents' sociodemographic information being analyzed:
 - The number of languages spoken
 - The number of years studying French   
 
-Statistical Methods:  
+`Statistical Methods`  
 - Exploratory Data Analysis  
 - Wilcoxon Signed Rank test  
 - KruskalWallis test (post-hoc: Dunn’s Test) 
