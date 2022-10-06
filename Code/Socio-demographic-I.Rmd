@@ -1,0 +1,442 @@
+---
+title: "Socio-demongraphic-II"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+- participants of different continent/country of birth  
+- participants preferred to learn different type of French  
+- participants taught by French teacher of different origins  
+
+```{r Load Package, message=FALSE}
+library(readxl)
+library(ggplot2)
+
+library(scales)
+library(tidyverse)
+library(tidyr)
+library(tidytext)
+library(reshape2)
+
+library(ggpubr)
+library(rstatix)
+library(broom)
+```
+
+
+```{r load data}
+#Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi <- read_excel(paste0(here::here(), "Data/Les différents accents du français - November 1 2021 - ENG for Shuyi.xlsx"))
+
+raw_data <- Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi
+
+data <- raw_data[-1, ]
+
+names(data)
+```
+
+```{r rename some columns, warning = FALSE, message = FALSE}
+data <- data %>%
+  select(-c(Q43...144, ...147, QID18_1, QID18_2, QID18_3, QID18_4,
+            QID18_5, QID18_6, QID18_7, QID18_8, QID18_9, QID18_10, QID19)) %>%
+  rename(gender = Q1,
+         gender_other = Q1_4_TEXT, 
+         age = Q2,
+         country_of_birth = Q3,
+         grow_up_country = ...8, 
+         grow_up_province = Q41,
+         grow_up_city = Q4,
+         field_of_study = Q5,
+         num_of_language = Q6,
+         spoken_language = Q42, 
+         #spoken_language_other = Q42_11_TEXT,
+         mother_tongue = Q7,
+         mother_tongue_other = Q7_11_TEXT,
+         year_of_french = Q8,
+         french_speaking_place = Q9,
+         french_speaking_place_other = Q9_6_TEXT,
+         month_live_in_fr_env = Q43...18,
+         type_of_french = Q10,
+         type_of_french_other = Q10_3_TEXT,
+         teacher_origin = Q11, 
+         teacher_origin_other = Q11_3_TEXT,
+         race = RACE
+         )
+  
+#  check the data type of each column
+#names(rec_data) 
+```
+
+# EDA 
+```{r gender prop}
+data %>% 
+  group_by(gender) %>% 
+  tally() %>% 
+  mutate(prop = scales::percent(n/nrow(data)))
+```
+
+```{r mean age and age range}
+data$age <- as.numeric(data$age)
+
+mean(data$age, na.rm = TRUE)
+
+range(data$age, na.rm = TRUE)
+```
+
+
+
+
+```{r Grew up place}
+# grow up in Canada
+data %>% 
+  filter(str_detect(grow_up_country, 'Canada'))
+
+# for ppl grew in Canada, 59 grew up in BC
+data %>% 
+  filter(str_detect(grow_up_country, 'Canada')) %>% 
+  group_by(grow_up_province) %>% 
+  tally()
+
+data <- data %>% 
+  mutate(str_detect(grow_up_country, 'Canada'), 'Yes', 'No')
+
+
+# not grew up in Canada & grew up in Asia
+data %>% 
+  filter(!str_detect(grow_up_country, 'Canada') & !is.na(grow_up_country)) %>%
+  mutate(grow_up_Asia = ifelse(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan'), 'grew up in Asia', 'not grew up in Asia')) %>%
+  group_by(grow_up_Asia) %>% 
+  tally()
+```
+
+
+```{r Num of Language}
+data %>% 
+  group_by(num_of_language) %>%
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '>5'),
+         num_of_language = replace(num_of_language, num_of_language == '1', '2')) %>% 
+  tally() %>%
+  arrange(desc(n)) %>% 
+  mutate(per =`n`/sum(`n`),
+  label = paste0(n, ' (', scales::percent(per), ')'))
+```
+
+
+
+```{r First Language}
+# English as first lanaguge
+data %>% 
+  mutate(English_first_language = ifelse(str_detect(mother_tongue, 'English'), TRUE, FALSE)) %>% 
+  group_by(English_first_language) %>% 
+  tally()
+
+# other first language
+first_language_df <- data %>% 
+  select(mother_tongue) %>%
+  mutate(English = ifelse(str_detect(mother_tongue, "English") | str_detect(mother_tongue, "Anglais"), TRUE, FALSE),
+         Cantonese = ifelse(str_detect(mother_tongue,"Cantonese"), TRUE, FALSE), 
+         Mandarin = ifelse(str_detect(mother_tongue,"Mandarin"), TRUE, FALSE),      
+         Korean = ifelse(str_detect(mother_tongue,"Korean"), TRUE, FALSE))   
+
+# Create a matrix to store count of mother tongues
+language_count = matrix(NA, nrow = 4, ncol = 2)
+
+for (i in 1:4){
+  language_count[i,2] = as.numeric(table(first_language_df[,i+1]))[2]
+  language_count[i,1] = colnames(first_language_df)[i+1]
+}
+
+language_count <- as.data.frame(language_count)
+colnames(language_count) = c('mother_tongue', 'n')
+
+
+language_count %>% 
+  mutate(n = as.numeric(n), 
+         prop = round(n/nrow(data), 3))
+
+# unique first language
+unique(data$mother_tongue)
+```
+
+```{r year of studying french}
+data <- data %>%  mutate(year_of_french = replace(year_of_french, year_of_french == '18 ans', '18'),
+                         year_of_french = replace(year_of_french, year_of_french == '9 ans', '9')) 
+data$year_of_french
+
+data %>% 
+  mutate(year_of_french = as.numeric(year_of_french)) %>% 
+  mutate(year_group = case_when(year_of_french <= 5 ~ "0 - 5",
+                                year_of_french > 5 & year_of_french <= 10 ~ "5 - 10",
+                                year_of_french > 10 & year_of_french <= 15 ~"10 - 15",
+                                year_of_french > 15 ~ "> 15")) %>%
+  group_by(year_group) %>%
+  tally() %>% 
+  drop_na() %>% 
+  mutate(per =`n`/sum(`n`),
+  label = paste0(n, ' (', scales::percent(per), ')'))
+```
+
+```{r Preference for French}
+data %>% 
+  select(type_of_french) %>% 
+  mutate(type_of_french = replace(type_of_french, type_of_french == "Autre variété de français (précisez)", 'French from France')) %>% 
+  group_by(type_of_french) %>%
+  tally() %>% 
+  mutate(per =`n`/sum(`n`),
+         label = paste0(n, ' (', scales::percent(per), ')'))
+```
+
+
+```{r # of Language}
+data %>% 
+  group_by(num_of_language) %>%
+  mutate(num_of_language = replace(num_of_language, num_of_language == '+ de 5', '>5'),
+         num_of_language = replace(num_of_language, num_of_language == '1', '2')) %>% 
+  tally() %>%
+  arrange(desc(n)) %>% 
+  mutate(per =round(`n`/sum(`n`), 3))
+```
+
+
+```{r race}
+data %>% 
+  group_by(race) %>% 
+  tally()
+```
+```{r Place grow up}
+data %>% 
+  filter(str_detect(grow_up_country, 'Canada')) %>% 
+  group_by(grow_up_country) %>% 
+  tally()
+# Out of 143 people who have answered this question, 99 people grew up in Canada, and another 9 people grew in both Canada and some other country. 
+
+
+
+data %>% 
+  drop_na(grow_up_country) %>% 
+  filter(str_detect(grow_up_country, ',') |
+           str_detect(grow_up_country, 'and'))%>% 
+  group_by(grow_up_country) %>% 
+  tally()
+
+# 13 people grew up in more than one country 
+
+
+data %>% 
+  drop_na(grow_up_country) %>% 
+  filter(!str_detect(grow_up_country, ',') &
+         !str_detect(grow_up_country, 'and')) %>% 
+  filter(grow_up_country != 'Canada') %>% 
+  mutate(grow_up_continent = case_when(grow_up_country %in% c('Brunei Darussalam', 'China','Hong Kong (S.A.R.)','India','Indonesia',
+                                                      'Iran','Japan','Kazakhstan','Malaysia', 'South Korea', 'Turkey',
+                                                      'United Arab Emirates', 'Vietnam', 'Paskistan') ~ 'Asia',
+                               grow_up_country %in% c('Czech Republic', 'Russia', 'UK', 'Ukraine') ~ 'Europe',
+                               grow_up_country %in% c('Colombia','Dominica', 'United States of America', 'USA', 'Brazil') ~ 'America',
+                               grow_up_country %in% c('Ethiopia','Dominica') ~ 'Africa'
+                               )) %>% 
+  group_by(grow_up_continent) %>% 
+  tally() 
+
+# For 140 people grew up in one country, excluding 99 who grew up in Canada, 25 ppl grew up in Asia, 10 grew up in America, 5 in Europe, amd one in Africa. 
+```
+
+
+# Data prep for test
+
+
+```{r Select a subset of column}
+rec_data <- data %>% 
+  select(c(5, 19, 21, 22, 23:132, 134)) %>% 
+  select(-c(`1B`, `2B`, `3B`, `4B`, `4B`, `5B`, `6B`, `7B`, `8B`, `9B`, `10B`)) %>% 
+  mutate(id = 1: nrow(data),
+         id = as.factor(id)) %>% 
+  relocate(id, .before = country_of_birth) %>% 
+  mutate(across(c(6:105), as.numeric)) 
+
+# reverse the scale for the question "strong accent? "
+accent_cols <- rec_data %>% 
+  select(contains('_4')) %>%
+  names
+
+rec_data[,accent_cols] = lapply(accent_cols,  function(x) 7 - rec_data[, x])
+
+# sum up the score
+rec_data <- rec_data %>% 
+   mutate(block_1 = rowSums(.[6:15]),
+         block_2 = rowSums(.[16:25]),
+         block_3 = rowSums(.[26:35]),
+         block_4 = rowSums(.[36:45]),
+         block_5 = rowSums(.[46:55]),
+         block_6 = rowSums(.[56:65]),
+         block_7 = rowSums(.[66:75]),
+         block_8 = rowSums(.[76:85]),
+         block_9 = rowSums(.[86:95]),
+         block_10 = rowSums(.[96:105]))
+```
+
+
+
+```{r Attach continent of birth}
+rec_data <- rec_data %>% 
+  mutate(continent = case_when(country_of_birth %in% c('Pakistan', 'Philippines', 'China', 'Hong Kong (S.A.R.)', 'India', 'Iran', 'Japan', 'Kazakhstan', 'South Korea', 'Taiwan', 'Turkey', 'Israel', 'Malaysia', 'Viet Nam', 'United Arab Emirates', 'Brunei Darussalam', 'Iraq', 'Indonesia') ~ 'Asia',
+                              country_of_birth %in% c('Brazil', 'Colombia', 'United States of America', 'Dominica', 'USA') ~ 'America',
+                              country_of_birth %in% c('Croatia', 'Czech Republic', 'Russian Federation', 'United Kingdom of Great Britain and Northern Ireland', 'Ukraine', 'Turkey', 'Romania', 'Monaco') ~ 'Europe',
+                              country_of_birth %in% c('Mauritius', 'Tunisia') ~ 'Africa',
+                              country_of_birth == 'Canada'~'Canada'))  
+
+
+rec_data %>% 
+  group_by(continent) %>% 
+  tally()
+```
+
+
+
+```{r Clean teacher of origin}
+rec_data <- rec_data %>%
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "Both Quebec and French", 'French and Quebec')) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "From everywhere: Quebec, France, French Second Language", 'French and Quebec')) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin_other == "Both Quebec and French, + French Second Language", 'French and Quebec')) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Elsewhere (specify)", 'Elsewhere')) 
+
+rec_data %>% 
+  group_by(teacher_origin) %>% 
+  tally() %>% 
+  mutate(prop = round(n/nrow(data), 3))
+```
+
+
+
+```{r make long data}
+recording_df_long <- rec_data %>% 
+  select(-c(5:105)) %>%
+  pivot_longer(cols = starts_with("block"), names_to = "block",values_to = "score")  %>%
+  mutate(speaker_race = case_when(block %in% c('block_1', 'block_4', 'block_7', 'block_8', 'block_9')~'white',
+                          block %in% c('block_2', 'block_3', 'block_5', 'block_6', 'block_10')~'black'),
+         speaker_accent = case_when(block %in% c('block_1', 'block_6')~'Quebec',
+                            block %in% c('block_2', 'block_9')~'European',
+                            block %in% c('block_3', 'block_8')~'Acadian',
+                            block %in% c('block_4', 'block_10')~'English',
+                            block %in% c('block_5', 'block_7')~'African')) 
+
+
+# replace English accent as 
+recording_df_long <- recording_df_long %>% 
+  mutate(speaker_accent = replace(speaker_accent, speaker_accent == 'English', 'L2 French'))
+```
+
+
+
+```{r long data for speaker accent, message=FALSE}
+rec_long_accent <- recording_df_long %>% 
+  # dplyr::select(id,speaker_accent, speaker_race, block, score) %>% 
+  group_by(id, speaker_accent) %>%
+  summarise(score = sum(score, na.rm = TRUE)) %>% 
+  left_join(rec_data, on = 'id')
+```
+
+
+```{r long data for speaker race, message=FALSE}
+rec_long_race <- recording_df_long %>% 
+  # dplyr::select(id,speaker_accent, speaker_race, block, score) %>% 
+  group_by(id, speaker_race) %>%
+  summarise(score = sum(score, na.rm = TRUE)) %>% 
+  left_join(rec_data, on = 'id')
+```
+
+
+
+## Continent of brith 
+
+```{r speaker accent}
+rec_long_accent %>%
+  filter(continent != 'Africa') %>% 
+  drop_na(continent) %>%
+  group_by(continent, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=continent))+
+  geom_point() + 
+  geom_line(aes(group = continent)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Continent of Birth') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+rec_long_accent %>% 
+  filter(continent != 'Africa') %>%
+  drop_na(continent) %>%
+  group_by(speaker_accent) %>% 
+  kruskal_test(score ~ continent)
+```
+
+
+## Preferred type of french
+
+
+
+```{r speaker accent, fig.height=2, fig.width=4}
+rec_long_accent <- rec_long_accent %>% 
+  mutate(type_of_french = replace(type_of_french, type_of_french == "Autre variété de français (précisez)", 'French from France')) %>% 
+  mutate(type_of_french = replace(type_of_french, type_of_french == "I have no preference", 'No preference')) 
+
+rec_long_accent %>% 
+  group_by(type_of_french, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=type_of_french))+
+  geom_point() + 
+  geom_line(aes(group = type_of_french)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Preferred Variety of French') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+rec_long_accent %>% 
+  group_by(speaker_accent) %>% 
+  kruskal_test(score ~ type_of_french)
+  
+```
+
+
+```{r speaker accent, fig.height=2, fig.width=4}
+rec_long_accent %>% 
+  drop_na(teacher_origin) %>% 
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Other. Specify.", 'Elsewhere')) %>%
+  mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Quebecer", 'Quebec')) %>%
+  group_by(teacher_origin, speaker_accent) %>%
+  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  ggplot(aes(x=speaker_accent, y=mu,col=teacher_origin))+
+  geom_point() + 
+  geom_line(aes(group = teacher_origin)) + 
+  theme_bw() + 
+  labs(x = 'Accent', y = 'Mean Score') + 
+  scale_colour_discrete('Origin of French Teacher(s)') + 
+  theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
+        axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
+        strip.text = element_text(size=12),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) 
+
+
+rec_long_accent %>% 
+  group_by(speaker_accent) %>% 
+  kruskal_test(score ~ teacher_origin)
+
+```
+
+
+
+
+
+
