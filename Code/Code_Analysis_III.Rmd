@@ -55,7 +55,7 @@ library(broom)
 
 
 ```{r load data}
-#Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi <- read_excel("Data/Les différents accents du français - November 1 2021 - ENG for Shuyi.xlsx")
+#Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi <- read_excel(paste0(here::here(), "Data/Les différents accents du français - November 1 2021 - ENG for Shuyi.xlsx"))
 
 raw_data <- Les_diffe_rents_accents_du_franc_ais_November_1_2021_ENG_for_Shuyi
 
@@ -115,7 +115,6 @@ data %>%
   group_by(grow_up_country) %>% 
   tally()
 # Out of 143 people who have answered this question, 99 people grew up in Canada, and another 9 people grew in both Canada and some other country. 
-
 
 
 
@@ -257,6 +256,8 @@ rec_long_race <- recording_df_long %>%
 
 
 # Viz & Statistics Tests 
+
+## Effect of speaker accent
 
 ```{r boxplot & line plot: gender vs. speaker accent}
 rec_long_accent %>%
@@ -483,8 +484,8 @@ recording_df_long %>%
   geom_smooth(method = lm) +
   facet_grid( ~ speaker_accent) +
   theme_bw() + 
-  labs(x = 'Number of Language Spoken', y = 'Score') + 
-  scale_colour_discrete('Number of Language Spoken') + 
+  labs(x = 'Number of Languages Spoken', y = 'Score') + 
+  scale_colour_discrete('Number of Languages Spoken') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -526,7 +527,7 @@ rec_long_accent %>%
   geom_smooth(method = 'glm') +
   facet_grid( ~ speaker_accent) +
   theme_bw() + 
-  labs(x = 'Year of Learning French', y = 'Score') + 
+  labs(x = 'Years of Learning French', y = 'Score') + 
   scale_colour_discrete('Grew up Continent/Country') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
@@ -987,7 +988,7 @@ rec_long_accent %>%
   geom_line(aes(group = white_or_not)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Race of Respondents') + 
+  scale_colour_discrete('Race of Participants') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -1030,8 +1031,8 @@ rec_long_accent %>%
   geom_point() + 
   geom_line(aes(group = race_group)) + 
   theme_bw() + 
-  labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Race of Respondents') + 
+  labs(x = 'Accent', y = 'Mean score') + 
+  scale_colour_discrete('Race of participants') + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
