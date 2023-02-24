@@ -263,13 +263,14 @@ rec_long_race <- recording_df_long %>%
 rec_long_accent %>%
   filter(gender %in% c('Woman', 'Man')) %>%
   group_by(gender, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), 
+            count = n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=gender))+
   geom_point() + 
   geom_line(aes(group = gender)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Gender') + 
+  scale_colour_discrete(name = 'Gender', labels=c("Male (N = 39)","Female (N = 114)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -309,13 +310,14 @@ rec_long_accent %>%
 rec_long_accent %>%
   filter(is.na(grew_up_canada) == FALSE) %>%
   group_by(grew_up_canada, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), 
+            count = n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=grew_up_canada))+
   geom_point() + 
   geom_line(aes(group = grew_up_canada)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in Canada') + 
+  scale_colour_discrete('Grew up in Canada', labels=c("FALSE (N = 35)","TRUE (N = 108)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -354,13 +356,14 @@ rec_long_accent %>%
 rec_long_accent %>%
   filter(is.na(multi_grow_up) == FALSE) %>%
   group_by(multi_grow_up, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), 
+            count = n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=multi_grow_up))+
   geom_point() + 
   geom_line(aes(group = multi_grow_up)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in more than one country') + 
+  scale_colour_discrete('Grew up in more than one country', labels=c("FALSE (N = 140)","TRUE (N = 13)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -1026,13 +1029,13 @@ rec_long_accent %>%
   mutate(race_group = replace(race_group, race_group == 'white', 'White')) %>%
   filter(is.na(race_group) == FALSE) %>%
   group_by(race_group, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), count = n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=race_group))+
   geom_point() + 
   geom_line(aes(group = race_group)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean score') + 
-  scale_colour_discrete('Race of participants') + 
+  scale_colour_discrete('Race of participants', labels = c('Chinese (N = 22)', 'Others (N = 37)', 'White (N = 34)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),

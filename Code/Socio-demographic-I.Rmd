@@ -388,13 +388,13 @@ rec_long_accent <- rec_long_accent %>%
 
 rec_long_accent %>% 
   group_by(type_of_french, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), count = n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=type_of_french))+
   geom_point() + 
   geom_line(aes(group = type_of_french)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Preferred Variety of French') + 
+  scale_colour_discrete('Preferred Variety of French', labels = c('French from France (N = 83)', 'French from Quebec (N = 14)', 'No preference (N = 59)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -407,6 +407,7 @@ rec_long_accent %>%
   kruskal_test(score ~ type_of_french)
   
 ```
+##  Teacher origin
 
 
 ```{r speaker accent, fig.height=2, fig.width=4}
@@ -415,13 +416,15 @@ rec_long_accent %>%
   mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Other. Specify.", 'Elsewhere')) %>%
   mutate(teacher_origin = replace(teacher_origin, teacher_origin == "Quebecer", 'Quebec')) %>%
   group_by(teacher_origin, speaker_accent) %>%
-  summarise(mu = mean(score, na.rm = TRUE)) %>% 
+  summarise(mu = mean(score, na.rm = TRUE), 
+            count= n()) %>% 
   ggplot(aes(x=speaker_accent, y=mu,col=teacher_origin))+
   geom_point() + 
   geom_line(aes(group = teacher_origin)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Origin of French Teacher(s)') + 
+  scale_colour_discrete('Origin of French Teacher(s)', 
+                        labels = c('Elsewhere (N = 23)', 'French (N = 74)', 'French and Quebec (N = 12)', 'Quebec (N = 45)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
