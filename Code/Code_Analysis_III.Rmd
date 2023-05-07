@@ -270,7 +270,7 @@ rec_long_accent %>%
   geom_line(aes(group = gender)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete(name = 'Gender', labels=c("Male (N = 39)","Female (N = 114)")) + 
+  scale_colour_discrete(name = 'Gender', labels=c("Male (n = 39)","Female (n = 114)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -317,7 +317,7 @@ rec_long_accent %>%
   geom_line(aes(group = grew_up_canada)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in Canada', labels=c("FALSE (N = 35)","TRUE (N = 108)")) + 
+  scale_colour_discrete('Grew up in Canada', labels=c("FALSE (n = 35)","TRUE (n = 108)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -363,7 +363,7 @@ rec_long_accent %>%
   geom_line(aes(group = multi_grow_up)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in more than one country', labels=c("FALSE (N = 140)","TRUE (N = 13)")) + 
+  scale_colour_discrete('Grew up in more than one country', labels=c("FALSE (n = 140)","TRUE (n = 13)")) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
@@ -1035,7 +1035,7 @@ rec_long_accent %>%
   geom_line(aes(group = race_group)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean score') + 
-  scale_colour_discrete('Race of participants', labels = c('Chinese (N = 22)', 'Others (N = 37)', 'White (N = 34)')) + 
+  scale_colour_discrete('Race of participants', labels = c('Chinese (n = 22)', 'Others (n = 37)', 'White (n = 34)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
