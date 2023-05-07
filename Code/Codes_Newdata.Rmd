@@ -1176,9 +1176,9 @@ ggboxplot(
   recording_df_long, x = "accent", y = "score",
   color = "race", palette = "jco"
   ) + 
-  stat_pvalue_manual(pwc, tip.length = 0, hide.ns = TRUE) +
+  # stat_pvalue_manual(pwc, tip.length = 0, hide.ns = FALSE) +
   labs(
-    subtitle = get_test_label(res.aov, detailed = TRUE),
+    subtitle = TeX("$Anova, F(2,46) = 34.19, p < 0.0001, \\eta_{g}^{2} = 0.37$"), 
     caption = get_pwc_label(pwc),
     y = 'Score',
     x = 'Accent'
