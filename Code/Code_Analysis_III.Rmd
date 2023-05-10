@@ -270,12 +270,16 @@ rec_long_accent %>%
   geom_line(aes(group = gender)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete(name = 'Gender', labels=c("Male (n = 39)","Female (n = 114)")) + 
+  # scale_colour_discrete(name = 'Gender', labels=c(paste0("Male (","*n*", "= 39)"),"Female (n = 114)")) + 
+  scale_colour_discrete(name = 'Gender', labels=c(expression(paste("Male (", italic("n"), '= 39)')), 
+                                                  expression(paste("Female (", italic("n"), '= 114)')))) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10), 
+        legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 rec_long_accent %>%
@@ -317,12 +321,16 @@ rec_long_accent %>%
   geom_line(aes(group = grew_up_canada)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in Canada', labels=c("FALSE (n = 35)","TRUE (n = 108)")) + 
+  # scale_colour_discrete('Grew up in Canada', labels=c("FALSE (n = 35)","TRUE (n = 108)")) + 
+  scale_colour_discrete(name = 'Grew up in Canada', labels=c(expression(paste("FALSE (", italic("n"), '= 35)')), 
+                                                  expression(paste("TRUE (", italic("n"), '= 108)')))) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10), 
+        legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 
@@ -363,12 +371,16 @@ rec_long_accent %>%
   geom_line(aes(group = multi_grow_up)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Grew up in more than one country', labels=c("FALSE (n = 140)","TRUE (n = 13)")) + 
+  # scale_colour_discrete('Grew up in more than one country', labels=c("FALSE (n = 140)","TRUE (n = 13)")) + 
+  scale_colour_discrete(name = 'Grew up in more than one country', labels=c(expression(paste("FALSE (", italic("n"), '= 140)')),
+                                                  expression(paste("TRUE (", italic("n"), '= 13)')))) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10),
+        legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 
@@ -1022,6 +1034,8 @@ rec_long_accent %>%
   group_by(speaker_accent) %>% 
   wilcox_test(score ~ white_or_not)
 ```
+ 
+
 
 
 ```{r viz: speaker accent vs. respondent race group}
@@ -1035,12 +1049,17 @@ rec_long_accent %>%
   geom_line(aes(group = race_group)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean score') + 
-  scale_colour_discrete('Race of participants', labels = c('Chinese (n = 22)', 'Others (n = 37)', 'White (n = 34)')) + 
+  scale_colour_discrete(name = 'Race of participants', labels=c(expression(paste("Chinese (", italic("n"), '= 22)')),
+                                                  expression(paste("Others (", italic("n"), '= 37)')), 
+                                                  expression(paste("White (", italic("n"), '= 34)')))) + 
+  #  scale_colour_discrete('Race of participants', labels = c('Chinese (n = 22)', 'Others (n = 37)', 'White (n = 34)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10), 
+         legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 
