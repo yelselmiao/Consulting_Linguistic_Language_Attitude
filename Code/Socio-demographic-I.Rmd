@@ -394,12 +394,23 @@ rec_long_accent %>%
   geom_line(aes(group = type_of_french)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Preferred Variety of French', labels = c('French from France (n = 83)', 'French from Quebec (n = 14)', 'No preference (n = 59)')) + 
+  scale_colour_discrete(name = 'Preferred Variety of French', labels = c(expression(
+    paste("French from France (", italic("n"), '= 83)')
+  ),
+  expression(
+    paste("French from Quebec (", italic("n"), '= 14)')
+  ), 
+  expression(paste(
+    "No preference (", italic("n"), '= 59)'
+  )))) + 
+  #scale_colour_discrete('Preferred Variety of French', labels = c('French from France (n = 83)', 'French from Quebec (n = 14)', #'No preference (n = 59)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10),
+        legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 rec_long_accent %>% 
@@ -423,13 +434,20 @@ rec_long_accent %>%
   geom_line(aes(group = teacher_origin)) + 
   theme_bw() + 
   labs(x = 'Accent', y = 'Mean Score') + 
-  scale_colour_discrete('Origin of French Teacher(s)', 
-                        labels = c('Elsewhere (n = 23)', 'French (n = 74)', 'French and Quebec (n = 12)', 'Quebec (n = 45)')) + 
+   scale_colour_discrete(name = 'Origin of French Teacher(s)', 
+                         labels=c(expression(paste("Elsewhere (", italic("n"), '= 23)')),
+                                  expression(paste("French (", italic("n"), '= 74)')),
+                                  expression(paste("French and Quebec (", italic("n"), '= 12)')),
+                                  expression(paste("Quebec (", italic("n"), '= 45)'))))+
+ # scale_colour_discrete('Origin of French Teacher(s)', 
+  #                      labels = c('Elsewhere (n = 23)', 'French (n = 74)', 'French and Quebec (n = 12)', 'Quebec (n = 45)')) + 
   theme(axis.title.x = element_text(size = 12,face = 'bold', hjust = 0.5, vjust = -0.6),
         axis.title.y = element_text(size = 12,face = 'bold', vjust = 3, hjust = 0.5),
         strip.text = element_text(size=12),
         axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)) 
+        axis.text.x = element_text(size = 10), 
+        legend.position = "right",  # Position the legend on the right
+        legend.text = element_text(hjust = 0)) 
 
 
 rec_long_accent %>% 

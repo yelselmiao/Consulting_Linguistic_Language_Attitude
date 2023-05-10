@@ -252,10 +252,10 @@ year_of_studying_french_df <- year_of_studying_french_df %>%
 year_of_studying_french_df$year_group <- factor(year_of_studying_french_df$year_group, levels = c("0 - 5", "5 - 10", "10 - 15", "> 15"))
 
 # pie chart
-plot_ly(year_of_studying_french_df, labels = ~year_group, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
-  layout(title = 'Year(s) of Studying French',
-         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+# plot_ly(year_of_studying_french_df, labels = ~year_group, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
+  # layout(title = 'Year(s) of Studying French',
+  #        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+  #        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
 
 # bar chart
 year_of_studying_french_df %>% 
@@ -278,10 +278,10 @@ preference_df <- data %>%
          label = paste0(n, ' (', scales::percent(per), ')'))
 
 # pie chart
-plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
-  layout(title = 'Preferred Type of French to Learn',
-         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+# plot_ly(preference_df, labels = ~type_of_french, values = ~n, type = 'pie',textposition = 'outside',textinfo = 'label+percent') %>%
+#   layout(title = 'Preferred Type of French to Learn',
+#          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+#          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
 ```
 
 ```{r Lived/Spent time in French-speaking area}
@@ -1172,13 +1172,24 @@ pwc <- recording_df_long %>%
 pwc <- pwc %>% add_xy_position(x = "accent")
 
 
+f_value <- 34.19
+df1 <- 2
+df2 <- 46
+p_value <- 0.0001
+eta_squared <- 0.37
+
+# Format the numbers
+formatted_p_value <- sprintf("%.4f", p_value)
+formatted_eta_squared <- sprintf("%.2f", eta_squared)
+
+
 ggboxplot(
   recording_df_long, x = "accent", y = "score",
   color = "race", palette = "jco"
   ) + 
   # stat_pvalue_manual(pwc, tip.length = 0, hide.ns = FALSE) +
   labs(
-    subtitle = TeX("$Anova, F(2,46) = 34.19, p < 0.0001, \\eta_{g}^{2} = 0.37$"), 
+    subtitle  = bquote("Anova, F(" ~ .(df1) ~ "," ~ .(df2) ~ ") =" ~ .(f_value) ~ ", p < " ~ .(format(p_value, scientific = FALSE)) ~ ", " ~ eta[g]^2 ~ " =" ~ .(eta_squared)), 
     caption = get_pwc_label(pwc),
     y = 'Score',
     x = 'Accent'
